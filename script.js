@@ -306,7 +306,11 @@ function bgClearDefault() {
 
 function bgApply(dataUrl) {
   const card = document.getElementById('card');
-  card.style.backgroundImage = dataUrl ? 'url("' + dataUrl + '")' : "linear-gradient(135deg, #161922 0%, #0b0d12 100%)";
+  const activeTheme = document.querySelector('.theme-btn.active').getAttribute('data-theme');
+  const defaultGrad = activeTheme === 'light' 
+    ? "linear-gradient(135deg, #FFFFFF 0%, #F4F8FC 100%)" 
+    : "linear-gradient(135deg, #161922 0%, #0b0d12 100%)";
+  card.style.backgroundImage = dataUrl ? 'url("' + dataUrl + '")' : defaultGrad;
   card.style.backgroundSize = '100% 100%';
   card.style.backgroundPosition = 'center';
   card.style.backgroundRepeat = 'no-repeat';
@@ -485,9 +489,9 @@ window.addEventListener('DOMContentLoaded', function () {
     card.style.setProperty('--color-tertiary', tertiaryColor.value);
     
     // Save to localStorage
-    localStorage.setItem('color_primary', primaryColor.value);
-    localStorage.setItem('color_secondary', secondaryColor.value);
-    localStorage.setItem('color_tertiary', tertiaryColor.value);
+    localStorage.setItem('c3_primary', primaryColor.value);
+    localStorage.setItem('c3_secondary', secondaryColor.value);
+    localStorage.setItem('c3_tertiary', tertiaryColor.value);
   };
 
   [primaryColor, secondaryColor, tertiaryColor].forEach(input => {
@@ -539,16 +543,16 @@ window.addEventListener('DOMContentLoaded', function () {
   syncFormats();
 
   // Load colors from localStorage
-  if (localStorage.getItem('color_primary')) {
-    primaryColor.value = localStorage.getItem('color_primary');
+  if (localStorage.getItem('c3_primary')) {
+    primaryColor.value = localStorage.getItem('c3_primary');
     primaryHex.value = primaryColor.value;
   }
-  if (localStorage.getItem('color_secondary')) {
-    secondaryColor.value = localStorage.getItem('color_secondary');
+  if (localStorage.getItem('c3_secondary')) {
+    secondaryColor.value = localStorage.getItem('c3_secondary');
     secondaryHex.value = secondaryColor.value;
   }
-  if (localStorage.getItem('color_tertiary')) {
-    tertiaryColor.value = localStorage.getItem('color_tertiary');
+  if (localStorage.getItem('c3_tertiary')) {
+    tertiaryColor.value = localStorage.getItem('c3_tertiary');
     tertiaryHex.value = tertiaryColor.value;
   }
   updateColors();
@@ -602,10 +606,11 @@ window.addEventListener('DOMContentLoaded', function () {
       btn.classList.add('active');
       const theme = btn.getAttribute('data-theme');
       if (theme === 'light') {
-        document.getElementById('hexPrimary').value = '#008a5e';
-        document.getElementById('hexSecondary').value = '#1a1a1a';
-        document.getElementById('hexTertiary').value = '#8a7b1c';
-        bgApply('linear-gradient(135deg, #f5f7fa 0%, #e4e8ef 100%)');
+        document.getElementById('hexPrimary').value = '#2D7DF3';
+        document.getElementById('hexSecondary').value = '#161B1E';
+        document.getElementById('hexTertiary').value = '#A7B5CA';
+        const activeBg = bgLibrary.find(b => b.id === bgActiveId);
+        bgApply(activeBg ? activeBg.dataUrl : null);
       } else {
         document.getElementById('hexPrimary').value = '#4aeabc';
         document.getElementById('hexSecondary').value = '#ffffff';

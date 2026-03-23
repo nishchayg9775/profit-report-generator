@@ -13,7 +13,7 @@
   <div class="panel">
     <div class="panel-content">
       <div class="panel-header" style="padding-bottom: 0; border-bottom: none;">
-        <h1>Profit Report Generator</h1>
+        <h1>Profit <span>Report</span> Generator</h1>
         <p>Design stunning trade summaries</p>
         
         <!-- Tabs Nav -->
@@ -139,7 +139,7 @@ NIFTY 50: 2.93% in 57 Mins</textarea>
                 <div style="flex: 1;">
                   <div style="display: flex; gap: 4px; align-items: center; margin-bottom: 4px;">
                     <input type="color" id="colorPrimary" value="#4aeabc" style="width: 24px; height: 24px; padding: 0; border: none; background: none; cursor: pointer; flex-shrink: 0;">
-                    <input type="text" id="hexPrimary" value="#4aeabc" style="width: 100%; padding: 4px; background: #1a1d2e; color: #e2e8f0; border: 1px solid #2a2d3a; border-radius: 4px; font-size: 11px; text-transform: uppercase;">
+                    <input type="text" id="hexPrimary" value="#4aeabc" style="width: 100%; padding: 6px; text-transform: uppercase;">
                   </div>
                   <div style="display: flex; gap: 4px;">
                      <button class="btn btn-secondary fmt-tog" data-cat="primary" data-fmt="b" style="padding: 2px; font-size: 11px; font-weight: bold; flex: 1;">B</button>
@@ -150,7 +150,7 @@ NIFTY 50: 2.93% in 57 Mins</textarea>
                 <div style="flex: 1;">
                   <div style="display: flex; gap: 4px; align-items: center; margin-bottom: 4px;">
                     <input type="color" id="colorSecondary" value="#ffffff" style="width: 24px; height: 24px; padding: 0; border: none; background: none; cursor: pointer; flex-shrink: 0;">
-                    <input type="text" id="hexSecondary" value="#ffffff" style="width: 100%; padding: 4px; background: #1a1d2e; color: #e2e8f0; border: 1px solid #2a2d3a; border-radius: 4px; font-size: 11px; text-transform: uppercase;">
+                    <input type="text" id="hexSecondary" value="#ffffff" style="width: 100%; padding: 6px; text-transform: uppercase;">
                   </div>
                   <div style="display: flex; gap: 4px;">
                      <button class="btn btn-secondary fmt-tog" data-cat="secondary" data-fmt="b" style="padding: 2px; font-size: 11px; font-weight: bold; flex: 1;">B</button>
@@ -161,7 +161,7 @@ NIFTY 50: 2.93% in 57 Mins</textarea>
                 <div style="flex: 1;">
                   <div style="display: flex; gap: 4px; align-items: center; margin-bottom: 4px;">
                     <input type="color" id="colorTertiary" value="#d4c97a" style="width: 24px; height: 24px; padding: 0; border: none; background: none; cursor: pointer; flex-shrink: 0;">
-                    <input type="text" id="hexTertiary" value="#d4c97a" style="width: 100%; padding: 4px; background: #1a1d2e; color: #e2e8f0; border: 1px solid #2a2d3a; border-radius: 4px; font-size: 11px; text-transform: uppercase;">
+                    <input type="text" id="hexTertiary" value="#d4c97a" style="width: 100%; padding: 6px; text-transform: uppercase;">
                   </div>
                   <div style="display: flex; gap: 4px;">
                      <button class="btn btn-secondary fmt-tog" data-cat="tertiary" data-fmt="b" style="padding: 2px; font-size: 11px; font-weight: bold; flex: 1;">B</button>
@@ -205,9 +205,9 @@ NIFTY 50: 2.93% in 57 Mins</textarea>
       </div> <!-- /panel-body -->
 
       <!-- Sticky Footer / Output -->
-      <div class="panel-footer" style="padding: 14px 22px; border-top: 1px solid #2a2d3a; background: #161922; flex-shrink: 0;">
+      <div class="panel-footer">
         <div class="control-group full" style="margin-bottom: 12px;">
-          <input type="text" id="fileName" placeholder="Auto-generated file name on click" style="width:100%;padding:8px 10px;background:#1a1d2e;color:#e2e8f0;border:1px solid #2a2d3a;border-radius:6px;font-size:12px;">
+          <input type="text" id="fileName" placeholder="Auto-generated file name on click">
         </div>
         <div class="actions" style="margin-top:0;">
           <button class="btn btn-primary" onclick="generate()">Calculate & Render</button>
