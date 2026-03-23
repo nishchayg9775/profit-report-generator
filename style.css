@@ -63,7 +63,12 @@
   }
   .card-inner { position: relative; z-index: 1; }
 
-  .card-sebi { text-align: right; font-weight: 700; font-style: var(--fs-tertiary); text-decoration: var(--td-tertiary); color: var(--color-tertiary); }
+  .card-logo { position: absolute; max-width: 120px; max-height: 50px; z-index: 10; object-fit: contain; }
+  .card-logo.top-left { top: 24px; left: 24px; }
+  .card-logo.top-right { top: 24px; right: 24px; }
+  .card-logo.bottom-center { bottom: 24px; left: 50%; transform: translateX(-50%); }
+
+  .card-sebi { text-align: right; font-weight: 700; font-style: var(--fs-tertiary); text-decoration: var(--td-tertiary); color: var(--color-tertiary); position: relative; z-index: 11; }
   .card-title { text-align: center; line-height: 1.08; white-space: normal; display: block; width: 100%; margin-left: auto; margin-right: auto; }
   .card-title .t-green { font-family: 'Inter', sans-serif; font-weight: 800; font-style: var(--fs-primary); text-decoration: var(--td-primary); color: var(--color-primary); }
   .card-title .t-white { font-family: 'Inter', sans-serif; font-weight: 700; font-style: var(--fs-secondary); text-decoration: var(--td-secondary); color: var(--color-secondary); opacity: 0.86; }

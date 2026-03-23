@@ -17,7 +17,13 @@
         <p>Paste trade data, auto-scales to fit</p>
       </div>
       <div class="panel-body">
-        <label>Trade Data</label>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+          <label style="margin:0;">Trade Data</label>
+          <div>
+            <input type="file" id="csvUpload" accept=".csv" style="display:none;">
+            <label for="csvUpload" class="btn btn-secondary" style="padding: 4px 8px; font-size: 10px; cursor: pointer; text-transform: uppercase;">Import CSV</label>
+          </div>
+        </div>
         <textarea id="inputText" rows="14">Equity:
 OIL: 3.33% in 5 Days
 TATAINVEST: 2.02% in 1 Hour
@@ -37,6 +43,35 @@ CANBK: 4.39% in 22 Mins
 NIFTY 50: 2.93% in 57 Mins</textarea>
 
         <div class="controls">
+          <div class="control-group full">
+            <label>Card Format (Preset)</label>
+            <select id="cardFormat">
+              <option value="auto" selected>Auto Fit (Default)</option>
+              <option value="1:1">Instagram Square (1:1)</option>
+              <option value="9:16">Story / Reels (9:16)</option>
+              <option value="16:9">Twitter / LinkedIn (16:9)</option>
+            </select>
+          </div>
+          <div class="control-group full">
+            <label>Card Logo (Optional)</label>
+            <div style="display: flex; gap: 8px;">
+              <input type="file" id="logoUpload" accept="image/*" style="display:none;">
+              <label for="logoUpload" class="btn btn-secondary" style="flex:1; text-align:center; padding: 7px;">Upload Logo</label>
+              <button class="btn btn-secondary" id="removeLogo" style="padding: 0 10px; display: none;" title="Remove Logo">×</button>
+              <select id="logoPos" style="flex: 1;">
+                <option value="top-left">Top Left</option>
+                <option value="top-right">Top Right</option>
+                <option value="bottom-center">Bottom Center</option>
+              </select>
+            </div>
+          </div>
+          <div class="control-group full">
+            <label>Theme</label>
+            <div style="display: flex; gap: 10px;">
+              <button class="btn btn-secondary theme-btn active" data-theme="dark" style="flex:1;">Dark</button>
+              <button class="btn btn-secondary theme-btn" data-theme="light" style="flex:1;">Light</button>
+            </div>
+          </div>
           <div class="control-group full">
             <label>Card Width (px)</label>
             <input type="range" id="cardWidth" min="400" max="1000" value="600">

@@ -56,6 +56,9 @@ function generate() {
   generateTimeout = setTimeout(doGenerate, 15);
 }
 
+let customLogoData = null;
+let customLogoPos = 'top-left';
+
 function doGenerate() {
   const text     = document.getElementById('inputText').value;
   const sections = parseInput(text);
@@ -87,8 +90,13 @@ function doGenerate() {
     totalRows * (px(BASE.tdFz) + px(BASE.tdPad) * 2) +
     px(BASE.discFz) * 3 + px(BASE.discMt);
 
-  const maxH = W * 1.25;
-  const autoScale = naturalH > maxH ? maxH / naturalH : 1;
+  const format = document.getElementById('cardFormat').value;
+  let formatMaxH = W * 1.25;
+  if (format === '1:1') formatMaxH = W;
+  else if (format === '9:16') formatMaxH = W * (16 / 9);
+  else if (format === '16:9') formatMaxH = W * (9 / 16);
+
+  const autoScale = naturalH > formatMaxH ? formatMaxH / naturalH : 1;
   const scale = autoScale * userScale;
 
   const sz = {};
@@ -100,6 +108,16 @@ function doGenerate() {
 
   const inner = document.getElementById('cardInner');
   inner.style.padding = sz.padTB + 'px ' + sz.padLR + 'px';
+  if (format !== 'auto') {
+    card.style.height = formatMaxH + 'px';
+    inner.style.display = 'flex';
+    inner.style.flexDirection = 'column';
+    inner.style.justifyContent = 'center';
+    inner.style.height = '100%';
+  } else {
+    card.style.height = 'auto';
+    inner.style.display = 'block';
+  }
 
   const sebiEl = document.getElementById('sebiLine');
   sebiEl.textContent = 'SEBI Reg. : ' + sebi;
@@ -123,6 +141,15 @@ function doGenerate() {
   const container = document.getElementById('tablesContainer');
   container.innerHTML = '';
   const fragment = document.createDocumentFragment();
+
+  if (customLogoData) {
+    const logoImg = document.createElement('img');
+    logoImg.src = customLogoData;
+    logoImg.className = 'card-logo ' + customLogoPos;
+    logoImg.style.transform = `scale(${scale})`;
+    logoImg.style.transformOrigin = customLogoPos.includes('left') ? 'top left' : (customLogoPos.includes('right') ? 'top right' : 'bottom center');
+    fragment.appendChild(logoImg);
+  }
 
   const ORDER = { 'EQUITY': 0, 'OPTIONS': 1, 'FUTURES': 2, 'COMMODITY': 3 };
   sections.sort((a, b) => (ORDER[a.name] ?? 99) - (ORDER[b.name] ?? 99));
@@ -543,6 +570,86 @@ window.addEventListener('DOMContentLoaded', function () {
     document.getElementById('tableSpacingVal').textContent = this.value + '%';
     generate();
   });
+  
+  document.getElementById('cardFormat').addEventListener('change', generate);
+
+  document.getElementById('logoUpload').addEventListener('change', function(e) {
+    const file = this.files[0];
+    if(file){
+      const reader = new FileReader();
+      reader.onload = (ev) => { 
+        customLogoData = ev.target.result; 
+        document.getElementById('removeLogo').style.display = 'inline-block';
+        generate(); 
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+  document.getElementById('removeLogo').addEventListener('click', function(e) {
+    customLogoData = null;
+    this.style.display = 'none';
+    document.getElementById('logoUpload').value = '';
+    generate();
+  });
+  document.getElementById('logoPos').addEventListener('change', function(e) {
+    customLogoPos = this.value;
+    generate();
+  });
+
+  document.querySelectorAll('.theme-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const theme = btn.getAttribute('data-theme');
+      if (theme === 'light') {
+        document.getElementById('hexPrimary').value = '#008a5e';
+        document.getElementById('hexSecondary').value = '#1a1a1a';
+        document.getElementById('hexTertiary').value = '#8a7b1c';
+        bgApply('linear-gradient(135deg, #f5f7fa 0%, #e4e8ef 100%)');
+      } else {
+        document.getElementById('hexPrimary').value = '#4aeabc';
+        document.getElementById('hexSecondary').value = '#ffffff';
+        document.getElementById('hexTertiary').value = '#d4c97a';
+        const activeBg = bgLibrary.find(b => b.id === bgActiveId);
+        bgApply(activeBg ? activeBg.dataUrl : null);
+      }
+      ['Primary','Secondary','Tertiary'].forEach(k => {
+        document.getElementById('hex' + k).dispatchEvent(new Event('blur'));
+      });
+    });
+  });
+
+  document.getElementById('csvUpload').addEventListener('change', function(e) {
+    const file = this.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target.result;
+      const lines = text.split('\n');
+      let out = "";
+      let currentCat = "";
+      lines.forEach(line => {
+        const parts = line.split(',');
+        if (parts.length >= 4) {
+          const cat = parts[0].trim().toUpperCase();
+          const stock = parts[1].trim();
+          const profit = parts[2].trim();
+          const dur = parts[3].trim();
+          if (!cat || stock.toLowerCase() === 'stock name' || stock.toLowerCase() === 'stock') return;
+          if (cat !== currentCat) {
+            if (currentCat) out += "\n";
+            out += cat + ":\n";
+            currentCat = cat;
+          }
+          out += `${stock}: ${profit} in ${dur}\n`;
+        }
+      });
+      if (out) { document.getElementById('inputText').value = out; generate(); }
+    };
+    reader.readAsText(file);
+    this.value = '';
+  });
+
   ['fontFamily','sebiReg'].forEach(id => {
     document.getElementById(id).addEventListener('change', generate);
   });
