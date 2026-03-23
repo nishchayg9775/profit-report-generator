@@ -574,6 +574,10 @@ window.addEventListener('DOMContentLoaded', function () {
     document.getElementById('tableSpacingVal').textContent = this.value + '%';
     generate();
   });
+  document.getElementById('tableBorder').addEventListener('input', function () {
+    document.getElementById('tableBorderVal').textContent = this.value + 'px';
+    document.getElementById('card').style.setProperty('--table-bw', this.value + 'px');
+  });
   
   document.getElementById('cardFormat').addEventListener('change', generate);
 
