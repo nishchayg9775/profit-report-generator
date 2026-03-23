@@ -297,7 +297,15 @@ function parseInput(text) {
     if (moreMatch) { cur.more = '+' + moreMatch[1] + ' more'; continue; }
     const m = line.match(/^(.+?):\s*(.+?)\s+(?:in\s+|on\s+)(.+)$/i);
     if (m) {
+      let stockName = m[1].trim().toUpperCase();
       let ret = m[2].trim();
+      let durationStr = m[3].trim();
+      
+      // Auto-formatting duration
+      durationStr = durationStr.replace(/^(?:the\s+)?same day$/i, 'Same Day');
+      durationStr = durationStr.replace(/^(?:just|only|the)\s+/i, '');
+      let finalDuration = durationStr.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+
       if (/futures/i.test(cur.name)) {
         if (!ret.includes('₹')) {
           ret = ret.startsWith('-') ? '-₹' + ret.slice(1).trim() : '₹' + ret;
@@ -305,7 +313,7 @@ function parseInput(text) {
       } else {
         if (!ret.includes('%')) ret = ret + '%';
       }
-      cur.rows.push({ name: m[1].trim(), returns: ret, duration: m[3].trim() });
+      cur.rows.push({ name: stockName, returns: ret, duration: finalDuration });
     }
   }
   return sections;
