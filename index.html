@@ -102,6 +102,9 @@
 
   .card-disclaimer { color: var(--color-secondary); opacity: 0.6; line-height: 1.5; text-align: center; white-space: pre-wrap; }
 
+  [contenteditable="true"] { outline: none; transition: box-shadow 0.2s; }
+  [contenteditable="true"]:focus { box-shadow: inset 0 0 0 1px rgba(74, 234, 188, 0.4); border-radius: 4px; }
+
   /* ════════ BACKGROUND PICKER ════════ */
   .bg-picker { margin-top: 14px; }
   .bg-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
@@ -230,6 +233,16 @@ NIFTY 50: 2.93% in 57 Mins</textarea>
               </div>
             </div>
           </div>
+
+          <div class="control-group full">
+            <label>Highlight Tool</label>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <input type="color" id="highlightColor" value="#ffeb3b" style="width: 24px; height: 24px; padding: 0; border: none; background: none; cursor: pointer; flex-shrink: 0;">
+              <button id="btnHighlight" class="btn btn-secondary" style="padding: 6px 12px; font-size: 11px;">Apply Color to Selection</button>
+            </div>
+            <p style="font-size:9px; color:#aaa; margin-top:4px;">Select text directly on the card, then click Apply Color.</p>
+          </div>
+
         </div>
 
         <!-- ── BACKGROUND PICKER ── -->
@@ -374,17 +387,20 @@ function generate() {
   sebiEl.textContent = 'SEBI Reg. : ' + sebi;
   sebiEl.style.fontSize = sz.sebiFz + 'px';
   sebiEl.style.marginBottom = sz.sebiMb + 'px';
+  sebiEl.contentEditable = "true";
 
   const titleBlock = document.getElementById('titleBlock');
   titleBlock.style.marginBottom = sz.titleMb + 'px';
   titleBlock.innerHTML =
     '<span class="t-green" style="font-size:' + sz.titleFz + 'px">' + totalRows + ' Profits </span>' +
     '<span class="t-white" style="font-size:' + sz.titleFz + 'px">Booked Today</span>';
+  titleBlock.contentEditable = "true";
 
   const discEl = document.getElementById('disclaimerDisplay');
   discEl.textContent = disc;
   discEl.style.fontSize = sz.discFz + 'px';
   discEl.style.marginTop = sz.discMt + 'px';
+  discEl.contentEditable = "true";
 
   const container = document.getElementById('tablesContainer');
   container.innerHTML = '';
@@ -399,6 +415,7 @@ function generate() {
     label.style.marginTop = Math.round(sz.secMt * tblSpace) + 'px';
     label.style.marginBottom = sz.secMb + 'px';
     label.textContent = sec.name;
+    label.contentEditable = "true";
     container.appendChild(label);
 
     const headers = COL_HEADERS[sec.name] || COL_HEADERS['EQUITY'];
@@ -420,6 +437,7 @@ function generate() {
       th.textContent = h;
       th.style.fontSize = sz.thFz + 'px';
       th.style.padding = sz.thPad + 'px ' + Math.round(sz.padLR * 0.4) + 'px';
+      th.contentEditable = "true";
       htr.appendChild(th);
     });
     thead.appendChild(htr);
@@ -428,9 +446,9 @@ function generate() {
     const tbody = document.createElement('tbody');
     for (const row of sec.rows) {
       const tr = document.createElement('tr');
-      const tdN = document.createElement('td'); tdN.className = 'td-name';     tdN.textContent = row.name;
-      const tdR = document.createElement('td'); tdR.className = 'td-returns';  tdR.textContent = row.returns;
-      const tdD = document.createElement('td'); tdD.className = 'td-duration'; tdD.textContent = row.duration;
+      const tdN = document.createElement('td'); tdN.className = 'td-name';     tdN.textContent = row.name; tdN.contentEditable = "true";
+      const tdR = document.createElement('td'); tdR.className = 'td-returns';  tdR.textContent = row.returns; tdR.contentEditable = "true";
+      const tdD = document.createElement('td'); tdD.className = 'td-duration'; tdD.textContent = row.duration; tdD.contentEditable = "true";
       [tdN, tdR, tdD].forEach(td => {
         td.style.fontSize = sz.tdFz + 'px';
         td.style.padding = sz.tdPad + 'px ' + Math.round(sz.padLR * 0.4) + 'px';
@@ -453,6 +471,7 @@ function generate() {
       moreEl.style.letterSpacing = '0.5px';
       moreEl.style.marginBottom = Math.round(sz.secMt * tblSpace) + 'px';
       moreEl.style.marginTop = Math.round(sz.tdPad * 0.8) + 'px';
+      moreEl.contentEditable = "true";
       container.appendChild(moreEl);
     } else {
       table.style.marginBottom = Math.round(sz.secMt * (tblSpace - 1)) + 'px';
@@ -769,6 +788,13 @@ window.addEventListener('DOMContentLoaded', function () {
   });
   document.getElementById('inputText').addEventListener('input', generate);
   document.getElementById('disclaimer').addEventListener('input', generate);
+
+  document.getElementById('btnHighlight').addEventListener('mousedown', function(e) {
+    e.preventDefault(); // Prevents selection from being lost when clicking the button
+    const col = document.getElementById('highlightColor').value;
+    document.execCommand('styleWithCSS', false, true);
+    document.execCommand('foreColor', false, col);
+  });
 
   // Init
   generate();
