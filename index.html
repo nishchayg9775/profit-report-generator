@@ -249,7 +249,7 @@ NIFTY 50: 2.93% in 57 Mins</textarea>
 
         <div class="control-group full">
           <label>File Name</label>
-          <input type="text" id="fileName" placeholder="profit-report" style="width:100%;padding:6px 10px;background:#1a1d2e;color:#e2e8f0;border:1px solid #2a2d3a;border-radius:6px;font-size:13px;">
+          <input type="text" id="fileName" placeholder="Auto-generated with current date" style="width:100%;padding:6px 10px;background:#1a1d2e;color:#e2e8f0;border:1px solid #2a2d3a;border-radius:6px;font-size:13px;">
         </div>
         <div class="actions">
           <button class="btn btn-primary" onclick="generate()">Generate</button>
@@ -457,7 +457,12 @@ function download() {
     scale: 2, backgroundColor: null, useCORS: true
   }).then(canvas => {
     const a = document.createElement('a');
-    const customName = document.getElementById('fileName').value.trim() || 'profit-report';
+    let customName = document.getElementById('fileName').value.trim();
+    if (!customName) {
+      const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      const d = new Date();
+      customName = `Univest_Stock Performance Page_Static Post ${d.getDate()} ${months[d.getMonth()]}`;
+    }
     a.download = customName + '.jpg';
     a.href = canvas.toDataURL('image/jpeg', 0.95);
     a.click();
