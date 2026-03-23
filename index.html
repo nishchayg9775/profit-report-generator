@@ -59,7 +59,7 @@
     --color-primary: #4aeabc;
     --color-secondary: #ffffff;
     --color-tertiary: #d4c97a;
-    background: url('bg.jpg') center / 100% 100% no-repeat;
+    background: linear-gradient(135deg, #161922 0%, #0b0d12 100%);
     font-family: 'Inter', 'Segoe UI', sans-serif;
     color: var(--color-secondary);
     position: relative;
@@ -100,7 +100,7 @@
   .td-returns  { color: var(--color-primary); font-weight: 700; }
   .td-duration { color: var(--color-secondary); opacity: 0.8; }
 
-  .card-disclaimer { color: var(--color-secondary); opacity: 0.6; line-height: 1.5; text-align: center; }
+  .card-disclaimer { color: var(--color-secondary); opacity: 0.6; line-height: 1.5; text-align: center; white-space: pre-wrap; }
 
   /* ════════ BACKGROUND PICKER ════════ */
   .bg-picker { margin-top: 14px; }
@@ -298,9 +298,10 @@ function parseInput(text) {
     const m = line.match(/^(.+?):\s*(.+?)\s+(?:in\s+|on\s+)(.+)$/i);
     if (m) {
       let ret = m[2].trim();
-      const bare = ret.replace(/[₹%,]/g, '').trim();
       if (/futures/i.test(cur.name)) {
-        if (!ret.startsWith('₹')) ret = '₹' + ret;
+        if (!ret.includes('₹')) {
+          ret = ret.startsWith('-') ? '-₹' + ret.slice(1).trim() : '₹' + ret;
+        }
       } else {
         if (!ret.includes('%')) ret = ret + '%';
       }
@@ -526,7 +527,7 @@ function bgClearDefault() {
 
 function bgApply(dataUrl) {
   const card = document.getElementById('card');
-  card.style.backgroundImage = dataUrl ? 'url("' + dataUrl + '")' : "url('bg.jpg')";
+  card.style.backgroundImage = dataUrl ? 'url("' + dataUrl + '")' : "linear-gradient(135deg, #161922 0%, #0b0d12 100%)";
   card.style.backgroundSize = '100% 100%';
   card.style.backgroundPosition = 'center';
   card.style.backgroundRepeat = 'no-repeat';
@@ -636,6 +637,9 @@ window.addEventListener('DOMContentLoaded', function () {
       bgActiveId = def.id;
       bgApply(def.dataUrl);
     }
+    bgRenderGrid();
+  }).catch(err => {
+    console.warn("IndexedDB init failed (Incognito mode?). Backgrounds will not save.", err);
     bgRenderGrid();
   });
   document.getElementById('bgUploadInput').addEventListener('change', function () {
