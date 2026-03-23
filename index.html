@@ -4,27 +4,37 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Univest Creative Studio</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,600;0,700;0,800;1,300;1,400;1,600;1,700;1,800&family=Roboto:wght@300;400;700&family=Poppins:wght@300;400;600;700&family=Open+Sans:wght@300;400;600;700&family=Lato:wght@300;400;700&family=Montserrat:wght@300;400;600;700&family=Nunito:wght@300;400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,600;0,700;0,800;1,300;1,400;1,600;1,700;1,800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <div class="app">
   <div class="panel">
     <div class="panel-content">
-      <div class="panel-header">
+      <div class="panel-header" style="padding-bottom: 0; border-bottom: none;">
         <h1>Profit Report Generator</h1>
-        <p>Paste trade data, auto-scales to fit</p>
-      </div>
-      <div class="panel-body">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-          <label style="margin:0;">Trade Data</label>
-          <div>
-            <input type="file" id="csvUpload" accept=".csv" style="display:none;">
-            <label for="csvUpload" class="btn btn-secondary" style="padding: 4px 8px; font-size: 10px; cursor: pointer; text-transform: uppercase;">Import CSV</label>
-          </div>
+        <p>Design stunning trade summaries</p>
+        
+        <!-- Tabs Nav -->
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="data">Data</button>
+          <button class="tab-btn" data-tab="layout">Layout</button>
+          <button class="tab-btn" data-tab="style">Style</button>
         </div>
-        <textarea id="inputText" rows="14">Equity:
+      </div>
+
+      <div class="panel-body">
+        <!-- =================== DATA TAB =================== -->
+        <div class="tab-pane active" id="tab-data">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <label style="margin:0;">Trade Data</label>
+            <div>
+              <input type="file" id="csvUpload" accept=".csv" style="display:none;">
+              <label for="csvUpload" class="btn btn-secondary" style="padding: 4px 8px; font-size: 10px; cursor: pointer; text-transform: uppercase;">Import CSV</label>
+            </div>
+          </div>
+          <textarea id="inputText" rows="18">Equity:
 OIL: 3.33% in 5 Days
 TATAINVEST: 2.02% in 1 Hour
 
@@ -42,161 +52,173 @@ BDL: 5.94% in 46 Mins
 CANBK: 4.39% in 22 Mins
 NIFTY 50: 2.93% in 57 Mins</textarea>
 
-        <div class="controls">
-          <div class="control-group full">
-            <label>Card Format (Preset)</label>
-            <select id="cardFormat">
-              <option value="auto" selected>Auto Fit (Default)</option>
-              <option value="1:1">Instagram Square (1:1)</option>
-              <option value="9:16">Story / Reels (9:16)</option>
-              <option value="16:9">Twitter / LinkedIn (16:9)</option>
-            </select>
+          <div class="controls" style="margin-top: 14px;">
+            <div class="control-group full">
+              <label>SEBI Registration</label>
+              <input type="text" id="sebiReg" value="INH000013776">
+            </div>
+            <div class="control-group full">
+              <label>Disclaimer</label>
+              <textarea id="disclaimer" rows="3" style="font-family:'Segoe UI',sans-serif;font-size:11px;">Investment in securities market are subject to market risks. Read all the related documents carefully before investing. The securities quoted are for illustration only and are not recommendatory. The information provided is intended for educational purposes only, for further disclosures, visit https://univest.in / Univest App.</textarea>
+            </div>
           </div>
-          <div class="control-group full">
-            <label>Card Logo (Optional)</label>
-            <div style="display: flex; gap: 8px;">
-              <input type="file" id="logoUpload" accept="image/*" style="display:none;">
-              <label for="logoUpload" class="btn btn-secondary" style="flex:1; text-align:center; padding: 7px;">Upload Logo</label>
-              <button class="btn btn-secondary" id="removeLogo" style="padding: 0 10px; display: none;" title="Remove Logo">×</button>
-              <select id="logoPos" style="flex: 1;">
-                <option value="top-left">Top Left</option>
-                <option value="top-right">Top Right</option>
-                <option value="bottom-center">Bottom Center</option>
+        </div>
+
+        <!-- =================== LAYOUT TAB =================== -->
+        <div class="tab-pane" id="tab-layout">
+          <div class="controls" style="margin-top:0;">
+            <div class="control-group full">
+              <label>Card Format (Preset)</label>
+              <select id="cardFormat">
+                <option value="auto" selected>Auto Fit (Default)</option>
+                <option value="1:1">Instagram Square (1:1)</option>
+                <option value="9:16">Story / Reels (9:16)</option>
+                <option value="16:9">Twitter / LinkedIn (16:9)</option>
+              </select>
+            </div>
+            <div class="control-group full">
+              <label>Card Width (px)</label>
+              <input type="range" id="cardWidth" min="400" max="1000" value="600">
+              <div class="range-val" id="cardWidthVal">600px</div>
+            </div>
+            <div class="control-group full">
+              <label>Overall Scale (%)</label>
+              <input type="range" id="overallScale" min="50" max="150" value="100" step="5">
+              <div class="range-val" id="overallScaleVal">100%</div>
+            </div>
+            <div class="control-group full">
+              <label>Heading Size (%)</label>
+              <input type="range" id="headingScale" min="50" max="200" value="90" step="5">
+              <div class="range-val" id="headingScaleVal">90%</div>
+            </div>
+            <div class="control-group full">
+              <label>Table Spacing</label>
+              <input type="range" id="tableSpacing" min="50" max="200" value="100" step="5">
+              <div class="range-val" id="tableSpacingVal">100%</div>
+            </div>
+            <div class="control-group full">
+              <label>Font Family</label>
+              <select id="fontFamily">
+                <option value="'Inter', sans-serif" selected>Inter</option>
+                <option value="'Segoe UI', system-ui, sans-serif">Segoe UI</option>
+                <option value="'Helvetica Neue', Helvetica, sans-serif">Helvetica</option>
+                <option value="'Roboto', sans-serif">Roboto</option>
               </select>
             </div>
           </div>
-          <div class="control-group full">
-            <label>Theme</label>
-            <div style="display: flex; gap: 10px;">
-              <button class="btn btn-secondary theme-btn active" data-theme="dark" style="flex:1;">Dark</button>
-              <button class="btn btn-secondary theme-btn" data-theme="light" style="flex:1;">Light</button>
+        </div>
+
+        <!-- =================== STYLE TAB =================== -->
+        <div class="tab-pane" id="tab-style">
+          <div class="controls" style="margin-top:0;">
+            <div class="control-group full">
+              <label>Theme</label>
+              <div style="display: flex; gap: 10px;">
+                <button class="btn btn-secondary theme-btn active" data-theme="dark" style="flex:1;">Dark</button>
+                <button class="btn btn-secondary theme-btn" data-theme="light" style="flex:1;">Light</button>
+              </div>
             </div>
-          </div>
-          <div class="control-group full">
-            <label>Card Width (px)</label>
-            <input type="range" id="cardWidth" min="400" max="1000" value="600">
-            <div class="range-val" id="cardWidthVal">600px</div>
-          </div>
-          <div class="control-group full">
-            <label>Overall Scale (%)</label>
-            <input type="range" id="overallScale" min="50" max="150" value="100" step="5">
-            <div class="range-val" id="overallScaleVal">100%</div>
-          </div>
-          <div class="control-group full">
-            <label>Heading Size (%)</label>
-            <input type="range" id="headingScale" min="50" max="200" value="90" step="5">
-            <div class="range-val" id="headingScaleVal">90%</div>
-          </div>
-          <div class="control-group full">
-            <label>Font Family</label>
-            <select id="fontFamily">
-              <option value="'Inter', sans-serif" selected>Inter (Default)</option>
-              <option value="'Segoe UI', system-ui, sans-serif">Segoe UI</option>
-              <option value="'Arial', sans-serif">Arial</option>
-              <option value="'Helvetica Neue', Helvetica, sans-serif">Helvetica</option>
-              <option value="'Roboto', sans-serif">Roboto</option>
-              <option value="'Poppins', sans-serif">Poppins</option>
-              <option value="'Open Sans', sans-serif">Open Sans</option>
-              <option value="'Lato', sans-serif">Lato</option>
-              <option value="'Montserrat', sans-serif">Montserrat</option>
-              <option value="'Nunito', sans-serif">Nunito</option>
-            </select>
-          </div>
-          <div class="control-group full">
-            <label>Table Spacing</label>
-            <input type="range" id="tableSpacing" min="50" max="200" value="100" step="5">
-            <div class="range-val" id="tableSpacingVal">100%</div>
-          </div>
-          <div class="control-group full">
-            <label>SEBI Registration</label>
-            <input type="text" id="sebiReg" value="INH000013776">
-          </div>
-          <div class="control-group full">
-            <label>Disclaimer</label>
-            <textarea id="disclaimer" rows="2" style="font-family:'Segoe UI',sans-serif;font-size:11px;">Investment in securities market are subject to market risks. Read all the related documents carefully before investing. The securities quoted are for illustration only and are not recommendatory. The information provided is intended for educational purposes only, for further disclosures, visit https://univest.in / Univest App.</textarea>
-          </div>
-          <div class="control-group full">
-            <label>Styles: Primary | Secondary | Tertiary</label>
-            <div style="display: flex; gap: 10px;">
-              <div style="flex: 1;">
-                <div style="display: flex; gap: 4px; align-items: center; margin-bottom: 4px;">
-                  <input type="color" id="colorPrimary" value="#4aeabc" style="width: 24px; height: 24px; padding: 0; border: none; background: none; cursor: pointer; flex-shrink: 0;">
-                  <input type="text" id="hexPrimary" value="#4aeabc" style="width: 100%; padding: 4px; background: #1a1d2e; color: #e2e8f0; border: 1px solid #2a2d3a; border-radius: 4px; font-size: 11px; text-transform: uppercase;">
-                </div>
-                <div style="display: flex; gap: 4px;">
-                   <button class="btn btn-secondary fmt-tog" data-cat="primary" data-fmt="b" style="padding: 2px; font-size: 11px; font-weight: bold; flex: 1;">B</button>
-                   <button class="btn btn-secondary fmt-tog" data-cat="primary" data-fmt="i" style="padding: 2px; font-size: 11px; font-style: italic; flex: 1;">I</button>
-                   <button class="btn btn-secondary fmt-tog" data-cat="primary" data-fmt="u" style="padding: 2px; font-size: 11px; text-decoration: underline; flex: 1;">U</button>
-                </div>
+
+            <div class="control-group full">
+              <label>Card Logo (Optional)</label>
+              <div style="display: flex; gap: 8px;">
+                <input type="file" id="logoUpload" accept="image/*" style="display:none;">
+                <label for="logoUpload" class="btn btn-secondary" style="flex:1; text-align:center; padding: 7px;">Upload Logo</label>
+                <button class="btn btn-secondary" id="removeLogo" style="padding: 0 10px; display: none;" title="Remove Logo">×</button>
+                <select id="logoPos" style="flex: 1;">
+                  <option value="top-left">Top Left</option>
+                  <option value="top-right">Top Right</option>
+                  <option value="bottom-center">Bottom Center</option>
+                </select>
               </div>
-              <div style="flex: 1;">
-                <div style="display: flex; gap: 4px; align-items: center; margin-bottom: 4px;">
-                  <input type="color" id="colorSecondary" value="#ffffff" style="width: 24px; height: 24px; padding: 0; border: none; background: none; cursor: pointer; flex-shrink: 0;">
-                  <input type="text" id="hexSecondary" value="#ffffff" style="width: 100%; padding: 4px; background: #1a1d2e; color: #e2e8f0; border: 1px solid #2a2d3a; border-radius: 4px; font-size: 11px; text-transform: uppercase;">
+            </div>
+
+            <div class="control-group full">
+              <label>Global Color Tokens (P/S/T)</label>
+              <div style="display: flex; gap: 10px;">
+                <div style="flex: 1;">
+                  <div style="display: flex; gap: 4px; align-items: center; margin-bottom: 4px;">
+                    <input type="color" id="colorPrimary" value="#4aeabc" style="width: 24px; height: 24px; padding: 0; border: none; background: none; cursor: pointer; flex-shrink: 0;">
+                    <input type="text" id="hexPrimary" value="#4aeabc" style="width: 100%; padding: 4px; background: #1a1d2e; color: #e2e8f0; border: 1px solid #2a2d3a; border-radius: 4px; font-size: 11px; text-transform: uppercase;">
+                  </div>
+                  <div style="display: flex; gap: 4px;">
+                     <button class="btn btn-secondary fmt-tog" data-cat="primary" data-fmt="b" style="padding: 2px; font-size: 11px; font-weight: bold; flex: 1;">B</button>
+                     <button class="btn btn-secondary fmt-tog" data-cat="primary" data-fmt="i" style="padding: 2px; font-size: 11px; font-style: italic; flex: 1;">I</button>
+                     <button class="btn btn-secondary fmt-tog" data-cat="primary" data-fmt="u" style="padding: 2px; font-size: 11px; text-decoration: underline; flex: 1;">U</button>
+                  </div>
                 </div>
-                <div style="display: flex; gap: 4px;">
-                   <button class="btn btn-secondary fmt-tog" data-cat="secondary" data-fmt="b" style="padding: 2px; font-size: 11px; font-weight: bold; flex: 1;">B</button>
-                   <button class="btn btn-secondary fmt-tog" data-cat="secondary" data-fmt="i" style="padding: 2px; font-size: 11px; font-style: italic; flex: 1;">I</button>
-                   <button class="btn btn-secondary fmt-tog" data-cat="secondary" data-fmt="u" style="padding: 2px; font-size: 11px; text-decoration: underline; flex: 1;">U</button>
+                <div style="flex: 1;">
+                  <div style="display: flex; gap: 4px; align-items: center; margin-bottom: 4px;">
+                    <input type="color" id="colorSecondary" value="#ffffff" style="width: 24px; height: 24px; padding: 0; border: none; background: none; cursor: pointer; flex-shrink: 0;">
+                    <input type="text" id="hexSecondary" value="#ffffff" style="width: 100%; padding: 4px; background: #1a1d2e; color: #e2e8f0; border: 1px solid #2a2d3a; border-radius: 4px; font-size: 11px; text-transform: uppercase;">
+                  </div>
+                  <div style="display: flex; gap: 4px;">
+                     <button class="btn btn-secondary fmt-tog" data-cat="secondary" data-fmt="b" style="padding: 2px; font-size: 11px; font-weight: bold; flex: 1;">B</button>
+                     <button class="btn btn-secondary fmt-tog" data-cat="secondary" data-fmt="i" style="padding: 2px; font-size: 11px; font-style: italic; flex: 1;">I</button>
+                     <button class="btn btn-secondary fmt-tog" data-cat="secondary" data-fmt="u" style="padding: 2px; font-size: 11px; text-decoration: underline; flex: 1;">U</button>
+                  </div>
                 </div>
-              </div>
-              <div style="flex: 1;">
-                <div style="display: flex; gap: 4px; align-items: center; margin-bottom: 4px;">
-                  <input type="color" id="colorTertiary" value="#d4c97a" style="width: 24px; height: 24px; padding: 0; border: none; background: none; cursor: pointer; flex-shrink: 0;">
-                  <input type="text" id="hexTertiary" value="#d4c97a" style="width: 100%; padding: 4px; background: #1a1d2e; color: #e2e8f0; border: 1px solid #2a2d3a; border-radius: 4px; font-size: 11px; text-transform: uppercase;">
-                </div>
-                <div style="display: flex; gap: 4px;">
-                   <button class="btn btn-secondary fmt-tog" data-cat="tertiary" data-fmt="b" style="padding: 2px; font-size: 11px; font-weight: bold; flex: 1;">B</button>
-                   <button class="btn btn-secondary fmt-tog" data-cat="tertiary" data-fmt="i" style="padding: 2px; font-size: 11px; font-style: italic; flex: 1;">I</button>
-                   <button class="btn btn-secondary fmt-tog" data-cat="tertiary" data-fmt="u" style="padding: 2px; font-size: 11px; text-decoration: underline; flex: 1;">U</button>
+                <div style="flex: 1;">
+                  <div style="display: flex; gap: 4px; align-items: center; margin-bottom: 4px;">
+                    <input type="color" id="colorTertiary" value="#d4c97a" style="width: 24px; height: 24px; padding: 0; border: none; background: none; cursor: pointer; flex-shrink: 0;">
+                    <input type="text" id="hexTertiary" value="#d4c97a" style="width: 100%; padding: 4px; background: #1a1d2e; color: #e2e8f0; border: 1px solid #2a2d3a; border-radius: 4px; font-size: 11px; text-transform: uppercase;">
+                  </div>
+                  <div style="display: flex; gap: 4px;">
+                     <button class="btn btn-secondary fmt-tog" data-cat="tertiary" data-fmt="b" style="padding: 2px; font-size: 11px; font-weight: bold; flex: 1;">B</button>
+                     <button class="btn btn-secondary fmt-tog" data-cat="tertiary" data-fmt="i" style="padding: 2px; font-size: 11px; font-style: italic; flex: 1;">I</button>
+                     <button class="btn btn-secondary fmt-tog" data-cat="tertiary" data-fmt="u" style="padding: 2px; font-size: 11px; text-decoration: underline; flex: 1;">U</button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div class="control-group full">
-            <label>Text Formatting</label>
-            <div style="display: flex; gap: 8px; align-items: center;">
-              <button id="btnBold" class="btn btn-secondary" style="padding: 4px 10px; font-size: 13px; font-weight: bold;" title="Bold">B</button>
-              <button id="btnItalic" class="btn btn-secondary" style="padding: 4px 10px; font-size: 13px; font-style: italic;" title="Italic">I</button>
-              <button id="btnUnderline" class="btn btn-secondary" style="padding: 4px 10px; font-size: 13px; text-decoration: underline;" title="Underline">U</button>
-              <div style="width: 1px; height: 24px; background: #2a2d3a; margin: 0 4px;"></div>
-              <input type="color" id="highlightColor" value="#ffeb3b" style="width: 24px; height: 24px; padding: 0; border: none; background: none; cursor: pointer; flex-shrink: 0;" title="Text Color">
-              <button id="btnHighlight" class="btn btn-secondary" style="padding: 5px 10px; font-size: 11px;">Apply Color</button>
+            <div class="control-group full" style="margin-bottom: 14px;">
+              <label>Selective Text Rendering</label>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <button id="btnBold" class="btn btn-secondary" style="padding: 4px 10px; font-size: 13px; font-weight: bold;" title="Bold">B</button>
+                <button id="btnItalic" class="btn btn-secondary" style="padding: 4px 10px; font-size: 13px; font-style: italic;" title="Italic">I</button>
+                <button id="btnUnderline" class="btn btn-secondary" style="padding: 4px 10px; font-size: 13px; text-decoration: underline;" title="Underline">U</button>
+                <div style="width: 1px; height: 24px; background: #2a2d3a; margin: 0 4px;"></div>
+                <input type="color" id="highlightColor" value="#ffeb3b" style="width: 24px; height: 24px; padding: 0; border: none; background: none; cursor: pointer; flex-shrink: 0;" title="Text Color">
+                <button id="btnHighlight" class="btn btn-secondary" style="padding: 5px 10px; font-size: 11px;">Apply Color</button>
+              </div>
+              <p style="font-size:9px; color:#aaa; margin-top:6px;">Select text directly on the card &rarr; click styling tool to format bounds.</p>
             </div>
-            <p style="font-size:9px; color:#aaa; margin-top:4px;">Select text on the card -> click tools to format or color.</p>
-          </div>
 
-        </div>
+            <!-- BACKGROUND PICKER -->
+            <div class="bg-picker">
+              <label style="border-top:1px solid #2a2d3a; padding-top:14px;">Background Elements</label>
+              <div class="file-upload" id="bgDropZone" style="margin-bottom:8px;">
+                <input type="file" id="bgUploadInput" accept="image/*" multiple>
+                <label class="file-upload-btn" id="bgDropLabel" for="bgUploadInput" style="cursor:pointer; padding:16px 12px; justify-content:center;">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  Upload or drag background(s)
+                </label>
+              </div>
+              <div class="bg-grid" id="bgGrid">
+                <span class="bg-empty" id="bgEmpty">No backgrounds uploaded yet.</span>
+              </div>
+            </div>
 
-        <!-- â”€â”€ BACKGROUND PICKER â”€â”€ -->
-        <div class="bg-picker">
-          <label>Card Background</label>
-          <div class="file-upload" id="bgDropZone" style="margin-bottom:8px;">
-            <input type="file" id="bgUploadInput" accept="image/*" multiple>
-            <label class="file-upload-btn" id="bgDropLabel" for="bgUploadInput" style="cursor:pointer; padding:16px 12px; justify-content:center;">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              Upload or drag & drop background image(s)
-            </label>
-          </div>
-          <div class="bg-grid" id="bgGrid">
-            <span class="bg-empty" id="bgEmpty">No backgrounds uploaded yet.</span>
           </div>
         </div>
+      </div> <!-- /panel-body -->
 
-        <div class="control-group full">
-          <label>File Name</label>
-          <input type="text" id="fileName" placeholder="Auto-generated with current date" style="width:100%;padding:6px 10px;background:#1a1d2e;color:#e2e8f0;border:1px solid #2a2d3a;border-radius:6px;font-size:13px;">
+      <!-- Sticky Footer / Output -->
+      <div class="panel-footer" style="padding: 14px 22px; border-top: 1px solid #2a2d3a; background: #161922; flex-shrink: 0;">
+        <div class="control-group full" style="margin-bottom: 12px;">
+          <input type="text" id="fileName" placeholder="Auto-generated file name on click" style="width:100%;padding:8px 10px;background:#1a1d2e;color:#e2e8f0;border:1px solid #2a2d3a;border-radius:6px;font-size:12px;">
         </div>
-        <div class="actions">
-          <button class="btn btn-primary" onclick="generate()">Generate</button>
-          <button class="btn btn-download" onclick="download()">Download JPEG</button>
+        <div class="actions" style="margin-top:0;">
+          <button class="btn btn-primary" onclick="generate()">Calculate & Render</button>
+          <button class="btn btn-download" onclick="download()">Export Design</button>
         </div>
       </div>
+
     </div>
   </div>
 
-  <!-- â•â•â•â•â•â•â•â•â•â•â• PREVIEW AREA â•â•â•â•â•â•â•â•â•â•â• -->
+  <!-- PREVIEW AREA -->
   <div class="preview-area">
     <div class="card" id="card">
       <div class="card-inner" id="cardInner">

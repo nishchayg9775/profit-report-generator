@@ -656,6 +656,16 @@ window.addEventListener('DOMContentLoaded', function () {
   document.getElementById('inputText').addEventListener('input', generate);
   document.getElementById('disclaimer').addEventListener('input', generate);
 
+  // Tab switching logic
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.getAttribute('data-tab')).classList.add('active');
+    });
+  });
+
   ['btnBold', 'btnItalic', 'btnUnderline'].forEach(id => {
     document.getElementById(id).addEventListener('mousedown', function(e) {
       e.preventDefault(); 
