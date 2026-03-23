@@ -5,139 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Univest Creative Studio</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,600;0,700;0,800;1,300;1,400;1,600;1,700;1,800&family=Roboto:wght@300;400;700&family=Poppins:wght@300;400;600;700&family=Open+Sans:wght@300;400;600;700&family=Lato:wght@300;400;700&family=Montserrat:wght@300;400;600;700&family=Nunito:wght@300;400;700&display=swap" rel="stylesheet">
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Inter', 'Segoe UI', sans-serif; background: #0f1117; color: #e0e0e0; min-height: 100vh; }
-  .app { display: flex; height: 100vh; }
-
-  /* ════════ PANEL ════════ */
-  .panel { width: 420px; min-width: 380px; background: #161922; border-right: 1px solid #2a2d3a; display: flex; flex-direction: column; }
-  .panel-content { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
-
-  .panel-header { padding: 14px 22px 8px; border-bottom: 1px solid #2a2d3a; }
-  .panel-header h1 { font-size: 16px; color: #4aeabc; font-weight: 700; }
-  .panel-header p { font-size: 11px; color: #888; margin-top: 2px; }
-  .panel-body { padding: 14px 22px; flex: 1; overflow-y: auto; }
-
-  label { display: block; font-size: 11px; font-weight: 600; color: #aaa; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
-  textarea { width: 100%; background: #1e2130; border: 1px solid #2e3148; border-radius: 8px; color: #e0e0e0; font-family: 'Consolas', monospace; font-size: 12px; padding: 10px; resize: vertical; outline: none; }
-  textarea:focus { border-color: #4aeabc; }
-
-  .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
-  .control-group { display: flex; flex-direction: column; }
-  .control-group.full { grid-column: 1 / -1; }
-  input[type="text"], select { width: 100%; background: #1e2130; border: 1px solid #2e3148; border-radius: 6px; color: #e0e0e0; font-size: 12px; padding: 7px 9px; outline: none; }
-  input:focus, select:focus { border-color: #4aeabc; }
-
-  .btn { padding: 9px 18px; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s; }
-  .btn-primary { background: #4aeabc; color: #0f1117; }
-  .btn-primary:hover { background: #3cd4a8; }
-  .btn-download { background: #2a2d3a; color: #4aeabc; border: 1px solid #4aeabc; }
-  .btn-download:hover { background: #4aeabc22; }
-  .btn-secondary { background: #2a2d3a; color: #ccc; border: 1px solid #3a3d4a; }
-  .btn-secondary:hover { background: #33364a; }
-  .actions { display: flex; gap: 10px; margin-top: 16px; }
-  .actions .btn { flex: 1; }
-
-  input[type="range"] { width: 100%; accent-color: #4aeabc; }
-  .range-val { font-size: 10px; color: #4aeabc; text-align: right; margin-top: 1px; }
-
-  .preview-area { flex: 1; display: flex; align-items: center; justify-content: center; overflow: auto; padding: 24px; background: #0b0d12; }
-
-  /* ════════ FILE UPLOAD ════════ */
-  .file-upload { position: relative; }
-  .file-upload input[type="file"] { display: none; }
-  .file-upload-btn { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #1e2130; border: 1px dashed #3e4158; border-radius: 8px; color: #888; font-size: 11px; cursor: pointer; transition: all .15s; }
-  .file-upload-btn:hover { border-color: #4aeabc; color: #4aeabc; }
-  .file-upload-btn.has-file { border-color: #4aeabc55; color: #4aeabc; border-style: solid; }
-  .file-upload-btn.drag-over { border-color: #4aeabc; background: rgba(74, 234, 188, 0.1); color: #4aeabc; }
-  .file-upload-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
-  .file-name { font-size: 10px; color: #4aeabc; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-  /* ════════ PROFIT REPORT CARD ════════ */
-  .card {
-    --color-primary: #4aeabc;
-    --color-secondary: #ffffff;
-    --color-tertiary: #d4c97a;
-    background: linear-gradient(135deg, #161922 0%, #0b0d12 100%);
-    font-family: 'Inter', 'Segoe UI', sans-serif;
-    color: var(--color-secondary);
-    position: relative;
-    overflow: hidden;
-  }
-  .card-inner { position: relative; z-index: 1; }
-
-  .card-sebi { text-align: right; font-weight: 700; color: var(--color-tertiary); }
-  .card-title { text-align: center; line-height: 1.08; white-space: nowrap; }
-  .card-title .t-green { font-family: 'Inter', sans-serif; font-weight: 800; color: var(--color-primary); }
-  .card-title .t-white { font-family: 'Inter', sans-serif; font-weight: 700; color: var(--color-secondary); opacity: 0.86; }
-
-  .card-section { text-align: center; font-weight: 700; letter-spacing: 2.5px; color: var(--color-secondary); opacity: 0.85; text-transform: uppercase; }
-
-  .card-table { width: 100%; border-collapse: collapse; table-layout: fixed; border-left: 1px solid rgba(255,255,255,.4); border-right: 1px solid rgba(255,255,255,.4); }
-  .card-table col.c-name { width: 35%; }
-  .card-table col.c-ret  { width: 35%; }
-  .card-table col.c-dur  { width: 30%; }
-
-  .card-table thead th {
-    font-weight: 700; letter-spacing: 1.2px; color: var(--color-tertiary);
-    text-transform: uppercase; text-align: center;
-    border-top: 1px solid rgba(255,255,255,.4);
-    border-bottom: 1px solid rgba(255,255,255,.4);
-    border-right: 1px solid rgba(255,255,255,.2);
-  }
-  .card-table thead th:last-child { border-right: none; }
-  .card-table tbody td {
-    text-align: center;
-    border-bottom: 1px solid rgba(255,255,255,.22);
-    border-right: 1px solid rgba(255,255,255,.2);
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  }
-  .card-table tbody td:last-child { border-right: none; }
-  .card-table tbody tr:last-child td { border-bottom: 1px solid rgba(255,255,255,.4); }
-
-  .td-name     { color: var(--color-secondary); opacity: 0.8; }
-  .td-returns  { color: var(--color-primary); font-weight: 700; }
-  .td-duration { color: var(--color-secondary); opacity: 0.8; }
-
-  .card-disclaimer { color: var(--color-secondary); opacity: 0.6; line-height: 1.5; text-align: center; white-space: pre-wrap; }
-
-  [contenteditable="true"] { outline: none; transition: box-shadow 0.2s; }
-  [contenteditable="true"]:focus { box-shadow: inset 0 0 0 1px rgba(74, 234, 188, 0.4); border-radius: 4px; }
-
-  /* ════════ BACKGROUND PICKER ════════ */
-  .bg-picker { margin-top: 14px; }
-  .bg-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
-  .bg-thumb {
-    width: 72px; height: 48px; border-radius: 6px; object-fit: cover; cursor: pointer;
-    border: 2px solid transparent; transition: border-color .15s, transform .1s;
-    flex-shrink: 0;
-  }
-  .bg-thumb:hover { transform: scale(1.05); }
-  .bg-thumb.selected { border-color: #4aeabc; }
-  .bg-thumb-wrap { position: relative; display: inline-block; }
-  .bg-thumb-star {
-    position: absolute; top: -5px; left: -5px; width: 16px; height: 16px;
-    background: #555; border-radius: 50%; border: none; color: #fff;
-    font-size: 9px; cursor: pointer; line-height: 1; padding: 0; display: flex; align-items: center; justify-content: center;
-  }
-  .bg-thumb-star:hover { background: #f0b429; }
-  .bg-thumb-star.is-default { background: #f0b429; }
-  .bg-thumb-del {
-    position: absolute; top: -5px; right: -5px; width: 16px; height: 16px;
-    background: #ff6b6b; border-radius: 50%; border: none; color: #fff;
-    font-size: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center;
-    line-height: 1; padding: 0;
-  }
-  .bg-thumb-del:hover { background: #e05555; }
-  .bg-empty { font-size: 11px; color: #555; font-style: italic; }
-
-  @media (max-width: 900px) {
-    .app { flex-direction: column; height: auto; }
-    .panel { width: 100%; min-width: 0; border-right: none; border-bottom: 1px solid #2a2d3a; }
-    .preview-area { min-height: 500px; }
-  }
-</style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
@@ -155,11 +23,11 @@ OIL: 3.33% in 5 Days
 TATAINVEST: 2.02% in 1 Hour
 
 Futures:
-BEL26MARFUT: ₹8,193 in Same Day
-NBCC26MARFUT: ₹7,605 in 1 Day
-AUROPHARMA26MARFUT: ₹7,425 in Same Day
-BEL26MARFUT: ₹7,410 in 1 Day
-AMBER26MARFUT: ₹7,200 in Same Day
+BEL26MARFUT: â‚¹8,193 in Same Day
+NBCC26MARFUT: â‚¹7,605 in 1 Day
+AUROPHARMA26MARFUT: â‚¹7,425 in Same Day
+BEL26MARFUT: â‚¹7,410 in 1 Day
+AMBER26MARFUT: â‚¹7,200 in Same Day
 
 Options:
 SENSEX: 32.33% in 8 Mins
@@ -178,6 +46,11 @@ NIFTY 50: 2.93% in 57 Mins</textarea>
             <label>Overall Scale (%)</label>
             <input type="range" id="overallScale" min="50" max="150" value="100" step="5">
             <div class="range-val" id="overallScaleVal">100%</div>
+          </div>
+          <div class="control-group full">
+            <label>Heading Size (%)</label>
+            <input type="range" id="headingScale" min="50" max="200" value="100" step="5">
+            <div class="range-val" id="headingScaleVal">100%</div>
           </div>
           <div class="control-group full">
             <label>Font Family</label>
@@ -208,44 +81,60 @@ NIFTY 50: 2.93% in 57 Mins</textarea>
             <textarea id="disclaimer" rows="2" style="font-family:'Segoe UI',sans-serif;font-size:11px;">Investment in securities market are subject to market risks. Read all the related documents carefully before investing. The securities quoted are for illustration only and are not recommendatory. The information provided is intended for educational purposes only, for further disclosures, visit https://univest.in / Univest App.</textarea>
           </div>
           <div class="control-group full">
-            <label>Text Colors</label>
+            <label>Styles: Primary | Secondary | Tertiary</label>
             <div style="display: flex; gap: 10px;">
               <div style="flex: 1;">
-                <label style="font-size: 9px; margin-bottom: 2px;">Primary</label>
-                <div style="display: flex; gap: 4px; align-items: center;">
+                <div style="display: flex; gap: 4px; align-items: center; margin-bottom: 4px;">
                   <input type="color" id="colorPrimary" value="#4aeabc" style="width: 24px; height: 24px; padding: 0; border: none; background: none; cursor: pointer; flex-shrink: 0;">
                   <input type="text" id="hexPrimary" value="#4aeabc" style="width: 100%; padding: 4px; background: #1a1d2e; color: #e2e8f0; border: 1px solid #2a2d3a; border-radius: 4px; font-size: 11px; text-transform: uppercase;">
                 </div>
-              </div>
-              <div style="flex: 1;">
-                <label style="font-size: 9px; margin-bottom: 2px;">Secondary</label>
-                <div style="display: flex; gap: 4px; align-items: center;">
-                  <input type="color" id="colorSecondary" value="#ffffff" style="width: 24px; height: 24px; padding: 0; border: none; background: none; cursor: pointer; flex-shrink: 0;">
-                  <input type="text" id="hexSecondary" value="#ffffff" style="width: 100%; padding: 4px; background: #1a1d2e; color: #e2e8f0; border: 1px solid #2a2d3a; border-radius: 4px; font-size: 11px; text-transform: uppercase;">
+                <div style="display: flex; gap: 4px;">
+                   <button class="btn btn-secondary fmt-tog" data-cat="primary" data-fmt="b" style="padding: 2px; font-size: 11px; font-weight: bold; flex: 1;">B</button>
+                   <button class="btn btn-secondary fmt-tog" data-cat="primary" data-fmt="i" style="padding: 2px; font-size: 11px; font-style: italic; flex: 1;">I</button>
+                   <button class="btn btn-secondary fmt-tog" data-cat="primary" data-fmt="u" style="padding: 2px; font-size: 11px; text-decoration: underline; flex: 1;">U</button>
                 </div>
               </div>
               <div style="flex: 1;">
-                <label style="font-size: 9px; margin-bottom: 2px;">Tertiary</label>
-                <div style="display: flex; gap: 4px; align-items: center;">
+                <div style="display: flex; gap: 4px; align-items: center; margin-bottom: 4px;">
+                  <input type="color" id="colorSecondary" value="#ffffff" style="width: 24px; height: 24px; padding: 0; border: none; background: none; cursor: pointer; flex-shrink: 0;">
+                  <input type="text" id="hexSecondary" value="#ffffff" style="width: 100%; padding: 4px; background: #1a1d2e; color: #e2e8f0; border: 1px solid #2a2d3a; border-radius: 4px; font-size: 11px; text-transform: uppercase;">
+                </div>
+                <div style="display: flex; gap: 4px;">
+                   <button class="btn btn-secondary fmt-tog" data-cat="secondary" data-fmt="b" style="padding: 2px; font-size: 11px; font-weight: bold; flex: 1;">B</button>
+                   <button class="btn btn-secondary fmt-tog" data-cat="secondary" data-fmt="i" style="padding: 2px; font-size: 11px; font-style: italic; flex: 1;">I</button>
+                   <button class="btn btn-secondary fmt-tog" data-cat="secondary" data-fmt="u" style="padding: 2px; font-size: 11px; text-decoration: underline; flex: 1;">U</button>
+                </div>
+              </div>
+              <div style="flex: 1;">
+                <div style="display: flex; gap: 4px; align-items: center; margin-bottom: 4px;">
                   <input type="color" id="colorTertiary" value="#d4c97a" style="width: 24px; height: 24px; padding: 0; border: none; background: none; cursor: pointer; flex-shrink: 0;">
                   <input type="text" id="hexTertiary" value="#d4c97a" style="width: 100%; padding: 4px; background: #1a1d2e; color: #e2e8f0; border: 1px solid #2a2d3a; border-radius: 4px; font-size: 11px; text-transform: uppercase;">
+                </div>
+                <div style="display: flex; gap: 4px;">
+                   <button class="btn btn-secondary fmt-tog" data-cat="tertiary" data-fmt="b" style="padding: 2px; font-size: 11px; font-weight: bold; flex: 1;">B</button>
+                   <button class="btn btn-secondary fmt-tog" data-cat="tertiary" data-fmt="i" style="padding: 2px; font-size: 11px; font-style: italic; flex: 1;">I</button>
+                   <button class="btn btn-secondary fmt-tog" data-cat="tertiary" data-fmt="u" style="padding: 2px; font-size: 11px; text-decoration: underline; flex: 1;">U</button>
                 </div>
               </div>
             </div>
           </div>
 
           <div class="control-group full">
-            <label>Highlight Tool</label>
+            <label>Text Formatting</label>
             <div style="display: flex; gap: 8px; align-items: center;">
-              <input type="color" id="highlightColor" value="#ffeb3b" style="width: 24px; height: 24px; padding: 0; border: none; background: none; cursor: pointer; flex-shrink: 0;">
-              <button id="btnHighlight" class="btn btn-secondary" style="padding: 6px 12px; font-size: 11px;">Apply Color to Selection</button>
+              <button id="btnBold" class="btn btn-secondary" style="padding: 4px 10px; font-size: 13px; font-weight: bold;" title="Bold">B</button>
+              <button id="btnItalic" class="btn btn-secondary" style="padding: 4px 10px; font-size: 13px; font-style: italic;" title="Italic">I</button>
+              <button id="btnUnderline" class="btn btn-secondary" style="padding: 4px 10px; font-size: 13px; text-decoration: underline;" title="Underline">U</button>
+              <div style="width: 1px; height: 24px; background: #2a2d3a; margin: 0 4px;"></div>
+              <input type="color" id="highlightColor" value="#ffeb3b" style="width: 24px; height: 24px; padding: 0; border: none; background: none; cursor: pointer; flex-shrink: 0;" title="Text Color">
+              <button id="btnHighlight" class="btn btn-secondary" style="padding: 5px 10px; font-size: 11px;">Apply Color</button>
             </div>
-            <p style="font-size:9px; color:#aaa; margin-top:4px;">Select text directly on the card, then click Apply Color.</p>
+            <p style="font-size:9px; color:#aaa; margin-top:4px;">Select text on the card -> click tools to format or color.</p>
           </div>
 
         </div>
 
-        <!-- ── BACKGROUND PICKER ── -->
+        <!-- â”€â”€ BACKGROUND PICKER â”€â”€ -->
         <div class="bg-picker">
           <label>Card Background</label>
           <div class="file-upload" id="bgDropZone" style="margin-bottom:8px;">
@@ -272,7 +161,7 @@ NIFTY 50: 2.93% in 57 Mins</textarea>
     </div>
   </div>
 
-  <!-- ═══════════ PREVIEW AREA ═══════════ -->
+  <!-- â•â•â•â•â•â•â•â•â•â•â• PREVIEW AREA â•â•â•â•â•â•â•â•â•â•â• -->
   <div class="preview-area">
     <div class="card" id="card">
       <div class="card-inner" id="cardInner">
@@ -286,519 +175,6 @@ NIFTY 50: 2.93% in 57 Mins</textarea>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script>
-
-/* ═══════════════════════════════════════════
-   PROFIT REPORT
-   ═══════════════════════════════════════════ */
-function parseInput(text) {
-  const sections = [];
-  let cur = null;
-  for (const raw of text.split('\n')) {
-    const line = raw.trim();
-    if (!line) continue;
-    if (/^(Equity|Futures?|Options?|Commodity)\s*:?\s*$/i.test(line)) {
-      let secName = line.replace(/\s*:?\s*$/, '').toUpperCase();
-      if (secName === 'FUTURE') secName = 'FUTURES';
-      if (secName === 'OPTION') secName = 'OPTIONS';
-      cur = { name: secName, rows: [] };
-      sections.push(cur);
-      continue;
-    }
-    if (!cur) continue;
-    const moreMatch = line.match(/^[+&]\s*(\d+)\s+more/i);
-    if (moreMatch) { cur.more = '+' + moreMatch[1] + ' more'; continue; }
-    const m = line.match(/^(.+?):\s*(.+?)\s+(?:in\s+|on\s+)(.+)$/i);
-    if (m) {
-      let stockName = m[1].trim().toUpperCase();
-      let ret = m[2].trim();
-      let durationStr = m[3].trim();
-      
-      // Auto-formatting duration
-      durationStr = durationStr.replace(/^(?:the\s+)?same day$/i, 'Same Day');
-      durationStr = durationStr.replace(/^(?:just|only|the)\s+/i, '');
-      let finalDuration = durationStr.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
-
-      if (/futures/i.test(cur.name)) {
-        if (!ret.includes('₹')) {
-          ret = ret.startsWith('-') ? '-₹' + ret.slice(1).trim() : '₹' + ret;
-        }
-      } else {
-        if (!ret.includes('%')) ret = ret + '%';
-      }
-      cur.rows.push({ name: stockName, returns: ret, duration: finalDuration });
-    }
-  }
-  return sections;
-}
-
-const COL_HEADERS = {
-  'EQUITY':    ['STOCK NAME', 'RETURNS',          'DURATION'],
-  'FUTURES':   ['STOCK NAME', 'RETURNS/LOT',      'DURATION'],
-  'OPTIONS':   ['STOCK NAME', 'RETURNS/STRATEGY', 'DURATION'],
-  'COMMODITY': ['STOCK NAME', 'RETURNS',          'DURATION'],
-};
-
-function generate() {
-  const text     = document.getElementById('inputText').value;
-  const sections = parseInput(text);
-  const W        = parseInt(document.getElementById('cardWidth').value);
-  const userScale= parseInt(document.getElementById('overallScale').value) / 100;
-  const tblSpace = parseInt(document.getElementById('tableSpacing').value) / 100;
-  const fontFam  = document.getElementById('fontFamily').value;
-  const sebi     = document.getElementById('sebiReg').value;
-  const disc     = document.getElementById('disclaimer').value;
-
-  const totalRows = sections.reduce((s, sec) => s + sec.rows.length + (sec.more ? parseInt(sec.more) : 0), 0);
-  const S         = sections.length;
-
-  const BASE = {
-    padTB: 0.040, padLR: 0.050, sebiFz: 0.019, sebiMb: 0.010,
-    titleFz: 0.080, titleMb: 0.030, secFz: 0.021, secMt: 0.025,
-    secMb: 0.010, thFz: 0.019, thPad: 0.014, tdFz: 0.022,
-    tdPad: 0.012, discFz: 0.013, discMt: 0.028,
-  };
-
-  const px = (frac) => frac * W;
-  const naturalH =
-    px(BASE.padTB) * 2 +
-    px(BASE.sebiFz) + px(BASE.sebiMb) +
-    px(BASE.titleFz) * 1.1 + px(BASE.titleMb) +
-    S * (px(BASE.secFz) + px(BASE.secMt) + px(BASE.secMb) +
-         px(BASE.thFz) + px(BASE.thPad) * 2) +
-    totalRows * (px(BASE.tdFz) + px(BASE.tdPad) * 2) +
-    px(BASE.discFz) * 3 + px(BASE.discMt);
-
-  const maxH = W * 1.25;
-  const autoScale = naturalH > maxH ? maxH / naturalH : 1;
-  const scale = autoScale * userScale;
-
-  const sz = {};
-  for (const k in BASE) sz[k] = Math.max(1, Math.round(px(BASE[k]) * scale));
-
-  const card = document.getElementById('card');
-  card.style.width = W + 'px';
-  card.style.fontFamily = fontFam;
-
-  const inner = document.getElementById('cardInner');
-  inner.style.padding = sz.padTB + 'px ' + sz.padLR + 'px';
-
-  const sebiEl = document.getElementById('sebiLine');
-  sebiEl.textContent = 'SEBI Reg. : ' + sebi;
-  sebiEl.style.fontSize = sz.sebiFz + 'px';
-  sebiEl.style.marginBottom = sz.sebiMb + 'px';
-  sebiEl.contentEditable = "true";
-
-  const titleBlock = document.getElementById('titleBlock');
-  titleBlock.style.marginBottom = sz.titleMb + 'px';
-  titleBlock.innerHTML =
-    '<span class="t-green" style="font-size:' + sz.titleFz + 'px">' + totalRows + ' Profits </span>' +
-    '<span class="t-white" style="font-size:' + sz.titleFz + 'px">Booked Today</span>';
-  titleBlock.contentEditable = "true";
-
-  const discEl = document.getElementById('disclaimerDisplay');
-  discEl.textContent = disc;
-  discEl.style.fontSize = sz.discFz + 'px';
-  discEl.style.marginTop = sz.discMt + 'px';
-  discEl.contentEditable = "true";
-
-  const container = document.getElementById('tablesContainer');
-  container.innerHTML = '';
-
-  const ORDER = { 'EQUITY': 0, 'OPTIONS': 1, 'FUTURES': 2, 'COMMODITY': 3 };
-  sections.sort((a, b) => (ORDER[a.name] ?? 99) - (ORDER[b.name] ?? 99));
-
-  for (const sec of sections) {
-    const label = document.createElement('div');
-    label.className = 'card-section';
-    label.style.fontSize = sz.secFz + 'px';
-    label.style.marginTop = Math.round(sz.secMt * tblSpace) + 'px';
-    label.style.marginBottom = sz.secMb + 'px';
-    label.textContent = sec.name;
-    label.contentEditable = "true";
-    container.appendChild(label);
-
-    const headers = COL_HEADERS[sec.name] || COL_HEADERS['EQUITY'];
-    const table = document.createElement('table');
-    table.className = 'card-table';
-
-    const colgroup = document.createElement('colgroup');
-    ['c-name','c-ret','c-dur'].forEach(cls => {
-      const col = document.createElement('col');
-      col.className = cls;
-      colgroup.appendChild(col);
-    });
-    table.appendChild(colgroup);
-
-    const thead = document.createElement('thead');
-    const htr = document.createElement('tr');
-    headers.forEach(h => {
-      const th = document.createElement('th');
-      th.textContent = h;
-      th.style.fontSize = sz.thFz + 'px';
-      th.style.padding = sz.thPad + 'px ' + Math.round(sz.padLR * 0.4) + 'px';
-      th.contentEditable = "true";
-      htr.appendChild(th);
-    });
-    thead.appendChild(htr);
-    table.appendChild(thead);
-
-    const tbody = document.createElement('tbody');
-    for (const row of sec.rows) {
-      const tr = document.createElement('tr');
-      const tdN = document.createElement('td'); tdN.className = 'td-name';     tdN.textContent = row.name; tdN.contentEditable = "true";
-      const tdR = document.createElement('td'); tdR.className = 'td-returns';  tdR.textContent = row.returns; tdR.contentEditable = "true";
-      const tdD = document.createElement('td'); tdD.className = 'td-duration'; tdD.textContent = row.duration; tdD.contentEditable = "true";
-      [tdN, tdR, tdD].forEach(td => {
-        td.style.fontSize = sz.tdFz + 'px';
-        td.style.padding = sz.tdPad + 'px ' + Math.round(sz.padLR * 0.4) + 'px';
-      });
-      tr.append(tdN, tdR, tdD);
-      tbody.appendChild(tr);
-    }
-    table.appendChild(tbody);
-    table.style.marginBottom = '0px';
-    container.appendChild(table);
-
-    if (sec.more) {
-      const moreEl = document.createElement('div');
-      moreEl.textContent = sec.more;
-      moreEl.style.textAlign = 'center';
-      moreEl.style.color = 'var(--color-secondary)';
-      moreEl.style.opacity = '0.45';
-      moreEl.style.fontSize = Math.round(sz.tdFz * 0.78) + 'px';
-      moreEl.style.fontStyle = 'italic';
-      moreEl.style.letterSpacing = '0.5px';
-      moreEl.style.marginBottom = Math.round(sz.secMt * tblSpace) + 'px';
-      moreEl.style.marginTop = Math.round(sz.tdPad * 0.8) + 'px';
-      moreEl.contentEditable = "true";
-      container.appendChild(moreEl);
-    } else {
-      table.style.marginBottom = Math.round(sz.secMt * (tblSpace - 1)) + 'px';
-    }
-  }
-}
-
-function download() {
-  html2canvas(document.getElementById('card'), {
-    scale: 2, backgroundColor: null, useCORS: true
-  }).then(canvas => {
-    const a = document.createElement('a');
-    let customName = document.getElementById('fileName').value.trim();
-    if (!customName) {
-      const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-      const d = new Date();
-      customName = `Univest_Stock Performance Page_Static Post ${d.getDate()} ${months[d.getMonth()]}`;
-    }
-    a.download = customName + '.jpg';
-    a.href = canvas.toDataURL('image/jpeg', 0.95);
-    a.click();
-  });
-}
-
-/* ═══════════════════════════════════════════
-   BACKGROUND PICKER — IndexedDB persistent storage
-   Records: {id, name, dataUrl, isDefault}
-   Backgrounds survive page refresh and tab close.
-   ★ button marks one as the default (auto-applied on load).
-   ═══════════════════════════════════════════ */
-
-let bgDB = null;
-let bgLibrary = [];   // in-memory cache [{id, name, dataUrl, isDefault}]
-let bgActiveId = null;
-
-function bgOpenDB() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open('bgStore', 1);
-    req.onupgradeneeded = (e) => {
-      e.target.result.createObjectStore('backgrounds', { keyPath: 'id' });
-    };
-    req.onsuccess = (e) => resolve(e.target.result);
-    req.onerror = (e) => reject(e.target.error);
-  });
-}
-
-function bgLoadAll() {
-  return new Promise((resolve) => {
-    const tx = bgDB.transaction('backgrounds', 'readonly');
-    const req = tx.objectStore('backgrounds').getAll();
-    req.onsuccess = () => resolve(req.result || []);
-    req.onerror = () => resolve([]);
-  });
-}
-
-function bgSave(record) {
-  return new Promise((resolve) => {
-    const tx = bgDB.transaction('backgrounds', 'readwrite');
-    tx.objectStore('backgrounds').put(record);
-    tx.oncomplete = resolve;
-  });
-}
-
-function bgDeleteDB(id) {
-  return new Promise((resolve) => {
-    const tx = bgDB.transaction('backgrounds', 'readwrite');
-    tx.objectStore('backgrounds').delete(id);
-    tx.oncomplete = resolve;
-  });
-}
-
-function bgClearDefault() {
-  return new Promise((resolve) => {
-    const tx = bgDB.transaction('backgrounds', 'readwrite');
-    const store = tx.objectStore('backgrounds');
-    const req = store.getAll();
-    req.onsuccess = () => {
-      const toUpdate = (req.result || []).filter(r => r.isDefault);
-      if (toUpdate.length === 0) { resolve(); return; }
-      toUpdate.forEach(r => store.put({ ...r, isDefault: false }));
-      tx.oncomplete = resolve;
-    };
-  });
-}
-
-function bgApply(dataUrl) {
-  const card = document.getElementById('card');
-  card.style.backgroundImage = dataUrl ? 'url("' + dataUrl + '")' : "linear-gradient(135deg, #161922 0%, #0b0d12 100%)";
-  card.style.backgroundSize = '100% 100%';
-  card.style.backgroundPosition = 'center';
-  card.style.backgroundRepeat = 'no-repeat';
-}
-
-function bgRenderGrid() {
-  const grid = document.getElementById('bgGrid');
-  const empty = document.getElementById('bgEmpty');
-
-  Array.from(grid.querySelectorAll('.bg-thumb-wrap')).forEach(el => el.remove());
-
-  if (bgLibrary.length === 0) {
-    empty.style.display = '';
-    bgApply(null);
-    return;
-  }
-  empty.style.display = 'none';
-
-  bgLibrary.forEach(bg => {
-    const wrap = document.createElement('div');
-    wrap.className = 'bg-thumb-wrap';
-
-    const img = document.createElement('img');
-    img.className = 'bg-thumb' + (bg.id === bgActiveId ? ' selected' : '');
-    img.src = bg.dataUrl;
-    img.title = bg.name;
-    img.onclick = () => {
-      bgActiveId = bg.id;
-      bgApply(bg.dataUrl);
-      bgRenderGrid();
-    };
-
-    // ★ Star = set as default (auto-applied on next load)
-    const star = document.createElement('button');
-    star.className = 'bg-thumb-star' + (bg.isDefault ? ' is-default' : '');
-    star.title = bg.isDefault ? 'Default background' : 'Set as default';
-    star.textContent = '★';
-    star.onclick = async (e) => {
-      e.stopPropagation();
-      await bgClearDefault();
-      bgLibrary = bgLibrary.map(b => ({ ...b, isDefault: false }));
-      const target = bgLibrary.find(b => b.id === bg.id);
-      if (target) {
-        target.isDefault = true;
-        await bgSave(target);
-      }
-      bgRenderGrid();
-    };
-
-    const del = document.createElement('button');
-    del.className = 'bg-thumb-del';
-    del.title = 'Remove';
-    del.textContent = '×';
-    del.onclick = async (e) => {
-      e.stopPropagation();
-      await bgDeleteDB(bg.id);
-      bgLibrary = bgLibrary.filter(b => b.id !== bg.id);
-      if (bgActiveId === bg.id) {
-        const next = bgLibrary[0] || null;
-        bgActiveId = next ? next.id : null;
-        bgApply(next ? next.dataUrl : null);
-      }
-      bgRenderGrid();
-    };
-
-    wrap.appendChild(img);
-    wrap.appendChild(star);
-    wrap.appendChild(del);
-    grid.appendChild(wrap);
-  });
-
-  const activeBg = bgLibrary.find(b => b.id === bgActiveId) || bgLibrary[0];
-  if (activeBg) {
-    bgActiveId = activeBg.id;
-    bgApply(activeBg.dataUrl);
-  }
-}
-
-async function bgHandleUpload(files) {
-  let loaded = 0;
-  const total = files.length;
-  Array.from(files).forEach(file => {
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const id = 'bg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
-      const record = { id, name: file.name, dataUrl: e.target.result, isDefault: false };
-      bgLibrary.push(record);
-      await bgSave(record);
-      bgActiveId = id;
-      loaded++;
-      if (loaded === total) bgRenderGrid();
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
-/* ═══════════════════════════════════════════
-   INIT & EVENT LISTENERS
-   ═══════════════════════════════════════════ */
-window.addEventListener('DOMContentLoaded', function () {
-  // Background picker init — load from IndexedDB (persists across refreshes)
-  bgOpenDB().then(async (db) => {
-    bgDB = db;
-    bgLibrary = await bgLoadAll();
-    const def = bgLibrary.find(b => b.isDefault);
-    if (def) {
-      bgActiveId = def.id;
-      bgApply(def.dataUrl);
-    }
-    bgRenderGrid();
-  }).catch(err => {
-    console.warn("IndexedDB init failed (Incognito mode?). Backgrounds will not save.", err);
-    bgRenderGrid();
-  });
-  document.getElementById('bgUploadInput').addEventListener('change', function () {
-    if (this.files.length) bgHandleUpload(this.files);
-    this.value = ''; // allow re-uploading same file
-  });
-
-  // Background Drag & Drop
-  const dropZone = document.getElementById('bgDropZone');
-  const dropLabel = document.getElementById('bgDropLabel');
-
-  ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-    dropZone.addEventListener(eventName, preventDefaults, false);
-  });
-
-  function preventDefaults (e) {
-    e.preventDefault();
-    e.stopPropagation();
-  }
-
-  ['dragenter', 'dragover'].forEach(eventName => {
-    dropZone.addEventListener(eventName, () => dropLabel.classList.add('drag-over'), false);
-  });
-
-  ['dragleave', 'drop'].forEach(eventName => {
-    dropZone.addEventListener(eventName, () => dropLabel.classList.remove('drag-over'), false);
-  });
-
-  dropZone.addEventListener('drop', function(e) {
-    const dt = e.dataTransfer;
-    const files = dt.files;
-    
-    // Filter for images
-    const imageFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
-    
-    if (imageFiles.length > 0) {
-      bgHandleUpload(imageFiles);
-    }
-  }, false);
-
-  // Text Colors Logic
-  const primaryColor = document.getElementById('colorPrimary');
-  const primaryHex = document.getElementById('hexPrimary');
-  const secondaryColor = document.getElementById('colorSecondary');
-  const secondaryHex = document.getElementById('hexSecondary');
-  const tertiaryColor = document.getElementById('colorTertiary');
-  const tertiaryHex = document.getElementById('hexTertiary');
-
-  const isValidHex = (hex) => /^#[0-9A-F]{6}$/i.test(hex);
-
-  const updateColors = (source) => {
-    if (source === primaryHex && isValidHex(primaryHex.value)) primaryColor.value = primaryHex.value;
-    else if (source === primaryColor) primaryHex.value = primaryColor.value;
-    
-    if (source === secondaryHex && isValidHex(secondaryHex.value)) secondaryColor.value = secondaryHex.value;
-    else if (source === secondaryColor) secondaryHex.value = secondaryColor.value;
-    
-    if (source === tertiaryHex && isValidHex(tertiaryHex.value)) tertiaryColor.value = tertiaryHex.value;
-    else if (source === tertiaryColor) tertiaryHex.value = tertiaryColor.value;
-
-    const card = document.getElementById('card');
-    card.style.setProperty('--color-primary', primaryColor.value);
-    card.style.setProperty('--color-secondary', secondaryColor.value);
-    card.style.setProperty('--color-tertiary', tertiaryColor.value);
-    
-    // Save to localStorage
-    localStorage.setItem('color_primary', primaryColor.value);
-    localStorage.setItem('color_secondary', secondaryColor.value);
-    localStorage.setItem('color_tertiary', tertiaryColor.value);
-  };
-
-  [primaryColor, secondaryColor, tertiaryColor].forEach(input => {
-    input.addEventListener('input', () => updateColors(input));
-  });
-  
-  [primaryHex, secondaryHex, tertiaryHex].forEach(input => {
-    input.addEventListener('input', () => updateColors(input));
-    input.addEventListener('blur', () => {
-      if (!input.value.startsWith('#')) input.value = '#' + input.value;
-      if (isValidHex(input.value)) updateColors(input);
-    });
-  });
-
-  // Load colors from localStorage
-  if (localStorage.getItem('color_primary')) {
-    primaryColor.value = localStorage.getItem('color_primary');
-    primaryHex.value = primaryColor.value;
-  }
-  if (localStorage.getItem('color_secondary')) {
-    secondaryColor.value = localStorage.getItem('color_secondary');
-    secondaryHex.value = secondaryColor.value;
-  }
-  if (localStorage.getItem('color_tertiary')) {
-    tertiaryColor.value = localStorage.getItem('color_tertiary');
-    tertiaryHex.value = tertiaryColor.value;
-  }
-  updateColors();
-
-  // Event listeners
-  document.getElementById('cardWidth').addEventListener('input', function () {
-    document.getElementById('cardWidthVal').textContent = this.value + 'px';
-    generate();
-  });
-  document.getElementById('overallScale').addEventListener('input', function () {
-    document.getElementById('overallScaleVal').textContent = this.value + '%';
-    generate();
-  });
-  document.getElementById('tableSpacing').addEventListener('input', function () {
-    document.getElementById('tableSpacingVal').textContent = this.value + '%';
-    generate();
-  });
-  ['fontFamily','sebiReg'].forEach(id => {
-    document.getElementById(id).addEventListener('change', generate);
-  });
-  document.getElementById('inputText').addEventListener('input', generate);
-  document.getElementById('disclaimer').addEventListener('input', generate);
-
-  document.getElementById('btnHighlight').addEventListener('mousedown', function(e) {
-    e.preventDefault(); // Prevents selection from being lost when clicking the button
-    const col = document.getElementById('highlightColor').value;
-    document.execCommand('styleWithCSS', false, true);
-    document.execCommand('foreColor', false, col);
-  });
-
-  // Init
-  generate();
-});
-</script>
+<script src="script.js"></script>
 </body>
 </html>

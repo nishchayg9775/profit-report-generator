@@ -1,0 +1,135 @@
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', 'Segoe UI', sans-serif; background: #0f1117; color: #e0e0e0; min-height: 100vh; }
+  .app { display: flex; height: 100vh; }
+
+  /* â•â•â•â•â•â•â•â• PANEL â•â•â•â•â•â•â•â• */
+  .panel { width: 420px; min-width: 380px; background: #161922; border-right: 1px solid #2a2d3a; display: flex; flex-direction: column; }
+  .panel-content { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+  .panel-header { padding: 14px 22px 8px; border-bottom: 1px solid #2a2d3a; text-align: center; }
+  .panel-header h1 { font-size: 16px; color: #4aeabc; font-weight: 700; }
+  .panel-header p { font-size: 11px; color: #888; margin-top: 2px; }
+  .panel-body { padding: 14px 22px; flex: 1; overflow-y: auto; }
+
+  label { display: block; font-size: 11px; font-weight: 600; color: #aaa; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
+  textarea { width: 100%; background: #1e2130; border: 1px solid #2e3148; border-radius: 8px; color: #e0e0e0; font-family: 'Consolas', monospace; font-size: 12px; padding: 10px; resize: vertical; outline: none; }
+  textarea:focus { border-color: #4aeabc; }
+
+  .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+  .control-group { display: flex; flex-direction: column; }
+  .control-group.full { grid-column: 1 / -1; }
+  input[type="text"], select { width: 100%; background: #1e2130; border: 1px solid #2e3148; border-radius: 6px; color: #e0e0e0; font-size: 12px; padding: 7px 9px; outline: none; }
+  input:focus, select:focus { border-color: #4aeabc; }
+
+  .btn { padding: 9px 18px; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s; }
+  .btn-primary { background: #4aeabc; color: #0f1117; }
+  .btn-primary:hover { background: #3cd4a8; }
+  .btn-download { background: #2a2d3a; color: #4aeabc; border: 1px solid #4aeabc; }
+  .btn-download:hover { background: #4aeabc22; }
+  .btn-secondary { background: #2a2d3a; color: #ccc; border: 1px solid #3a3d4a; }
+  .btn-secondary:hover { background: #33364a; }
+  .btn-secondary.active { background: #4aeabc; color: #0f1117; border-color: #4aeabc; }
+  .actions { display: flex; gap: 10px; margin-top: 16px; }
+  .actions .btn { flex: 1; }
+
+  input[type="range"] { width: 100%; accent-color: #4aeabc; }
+  .range-val { font-size: 10px; color: #4aeabc; text-align: right; margin-top: 1px; }
+
+  .preview-area { flex: 1; display: flex; align-items: center; justify-content: center; overflow: auto; padding: 24px; background: #0b0d12; }
+
+  /* â•â•â•â•â•â•â•â• FILE UPLOAD â•â•â•â•â•â•â•â• */
+  .file-upload { position: relative; }
+  .file-upload input[type="file"] { display: none; }
+  .file-upload-btn { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #1e2130; border: 1px dashed #3e4158; border-radius: 8px; color: #888; font-size: 11px; cursor: pointer; transition: all .15s; }
+  .file-upload-btn:hover { border-color: #4aeabc; color: #4aeabc; }
+  .file-upload-btn.has-file { border-color: #4aeabc55; color: #4aeabc; border-style: solid; }
+  .file-upload-btn.drag-over { border-color: #4aeabc; background: rgba(74, 234, 188, 0.1); color: #4aeabc; }
+  .file-upload-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+  .file-name { font-size: 10px; color: #4aeabc; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* â•â•â•â•â•â•â•â• PROFIT REPORT CARD â•â•â•â•â•â•â•â• */
+  .card {
+    --color-primary: #4aeabc;
+    --color-secondary: #ffffff;
+    --color-tertiary: #d4c97a;
+    --fw-primary: 700; --fs-primary: normal; --td-primary: none;
+    --fw-secondary: normal; --fs-secondary: normal; --td-secondary: none;
+    --fw-tertiary: 700; --fs-tertiary: normal; --td-tertiary: none;
+    background: linear-gradient(135deg, #161922 0%, #0b0d12 100%);
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+    color: var(--color-secondary);
+    position: relative;
+    overflow: hidden;
+  }
+  .card-inner { position: relative; z-index: 1; }
+
+  .card-sebi { text-align: right; font-weight: 700; font-style: var(--fs-tertiary); text-decoration: var(--td-tertiary); color: var(--color-tertiary); }
+  .card-title { text-align: center; line-height: 1.08; white-space: normal; display: block; width: 100%; margin-left: auto; margin-right: auto; }
+  .card-title .t-green { font-family: 'Inter', sans-serif; font-weight: 800; font-style: var(--fs-primary); text-decoration: var(--td-primary); color: var(--color-primary); }
+  .card-title .t-white { font-family: 'Inter', sans-serif; font-weight: 700; font-style: var(--fs-secondary); text-decoration: var(--td-secondary); color: var(--color-secondary); opacity: 0.86; }
+
+  .card-section { text-align: center; font-weight: 700; font-style: var(--fs-secondary); text-decoration: var(--td-secondary); letter-spacing: 2.5px; color: var(--color-secondary); opacity: 0.85; text-transform: uppercase; margin-left: auto; margin-right: auto; }
+
+  .card-table { width: 100%; border-collapse: collapse; table-layout: fixed; border-left: 1px solid rgba(255,255,255,.4); border-right: 1px solid rgba(255,255,255,.4); }
+  .card-table col.c-name { width: 35%; }
+  .card-table col.c-ret  { width: 35%; }
+  .card-table col.c-dur  { width: 30%; }
+
+  .card-table thead th {
+    font-weight: var(--fw-tertiary); font-style: var(--fs-tertiary); text-decoration: var(--td-tertiary); letter-spacing: 1.2px; color: var(--color-tertiary);
+    text-transform: uppercase; text-align: center;
+    border-top: 1px solid rgba(255,255,255,.4);
+    border-bottom: 1px solid rgba(255,255,255,.4);
+    border-right: 1px solid rgba(255,255,255,.2);
+  }
+  .card-table thead th:last-child { border-right: none; }
+  .card-table tbody td {
+    text-align: center;
+    border-bottom: 1px solid rgba(255,255,255,.22);
+    border-right: 1px solid rgba(255,255,255,.2);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .card-table tbody td:last-child { border-right: none; }
+  .card-table tbody tr:last-child td { border-bottom: 1px solid rgba(255,255,255,.4); }
+
+  .td-name     { color: var(--color-secondary); font-weight: var(--fw-secondary); font-style: var(--fs-secondary); text-decoration: var(--td-secondary); opacity: 0.8; }
+  .td-returns  { color: var(--color-primary); font-weight: var(--fw-primary, 700); font-style: var(--fs-primary); text-decoration: var(--td-primary); }
+  .td-duration { color: var(--color-secondary); font-weight: var(--fw-secondary); font-style: var(--fs-secondary); text-decoration: var(--td-secondary); opacity: 0.8; }
+
+  .card-disclaimer { color: var(--color-secondary); font-weight: var(--fw-secondary); font-style: var(--fs-secondary); text-decoration: var(--td-secondary); opacity: 0.6; line-height: 1.5; text-align: center; white-space: pre-wrap; }
+
+  [contenteditable="true"] { outline: none; transition: box-shadow 0.2s; }
+  [contenteditable="true"]:focus { box-shadow: inset 0 0 0 1px rgba(74, 234, 188, 0.4); border-radius: 4px; }
+
+  /* â•â•â•â•â•â•â•â• BACKGROUND PICKER â•â•â•â•â•â•â•â• */
+  .bg-picker { margin-top: 14px; }
+  .bg-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .bg-thumb {
+    width: 72px; height: 48px; border-radius: 6px; object-fit: cover; cursor: pointer;
+    border: 2px solid transparent; transition: border-color .15s, transform .1s;
+    flex-shrink: 0;
+  }
+  .bg-thumb:hover { transform: scale(1.05); }
+  .bg-thumb.selected { border-color: #4aeabc; }
+  .bg-thumb-wrap { position: relative; display: inline-block; }
+  .bg-thumb-star {
+    position: absolute; top: -5px; left: -5px; width: 16px; height: 16px;
+    background: #555; border-radius: 50%; border: none; color: #fff;
+    font-size: 9px; cursor: pointer; line-height: 1; padding: 0; display: flex; align-items: center; justify-content: center;
+  }
+  .bg-thumb-star:hover { background: #f0b429; }
+  .bg-thumb-star.is-default { background: #f0b429; }
+  .bg-thumb-del {
+    position: absolute; top: -5px; right: -5px; width: 16px; height: 16px;
+    background: #ff6b6b; border-radius: 50%; border: none; color: #fff;
+    font-size: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    line-height: 1; padding: 0;
+  }
+  .bg-thumb-del:hover { background: #e05555; }
+  .bg-empty { font-size: 11px; color: #555; font-style: italic; }
+
+  @media (max-width: 900px) {
+    .app { flex-direction: column; height: auto; }
+    .panel { width: 100%; min-width: 0; border-right: none; border-bottom: 1px solid #2a2d3a; }
+    .preview-area { min-height: 500px; }
+  }
