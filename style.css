@@ -75,6 +75,8 @@ input[type="range"] { width: 100%; accent-color: #2D7DF3; cursor: pointer; }
 .bg-thumb-del { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; background: #FF615F; box-shadow: 0 2px 6px rgba(255,97,95,0.3); border-radius: 50%; border: none; color: #fff; font-size: 12px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 .bg-thumb-del:hover { background: #E04B49; transform: scale(1.1); }
 /* ════════ PROFIT REPORT CARD ════════ */
+.bg-thumb-badge { position: absolute; left: 6px; bottom: 6px; padding: 2px 6px; border-radius: 999px; background: rgba(22, 27, 30, 0.78); color: #FFFFFF; font-size: 9px; font-weight: 700; letter-spacing: 0.3px; pointer-events: none; }
+.is-hidden { display: none; }
 .card {
   --color-primary: #4aeabc;
   --color-secondary: #ffffff;

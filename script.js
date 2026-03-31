@@ -253,6 +253,16 @@ function download() {
 let bgDB = null;
 let bgLibrary = [];   // in-memory cache [{id, name, dataUrl, isDefault}]
 let bgActiveId = null;
+const BUNDLED_BACKGROUNDS = [
+  { id: 'bundled-137497973-9c1d7588-1a4f-1', name: '137497973_9c1d7588-1a4f-1.jpg', dataUrl: encodeURI('137497973_9c1d7588-1a4f-1.jpg'), isBundled: true },
+  { id: 'bundled-137497973-9c1d7588-1a4f-11ee-8564-42010a280815', name: '137497973_9c1d7588-1a4f-11ee-8564-42010a280815.jpg', dataUrl: encodeURI('137497973_9c1d7588-1a4f-11ee-8564-42010a280815.jpg'), isBundled: true },
+  { id: 'bundled-dasa', name: 'dasa.jpg', dataUrl: encodeURI('dasa.jpg'), isBundled: true },
+  { id: 'bundled-2', name: '_ (2).jpeg', dataUrl: encodeURI('_ (2).jpeg'), isBundled: true }
+];
+
+function bgGetAll() {
+  return [...BUNDLED_BACKGROUNDS, ...bgLibrary];
+}
 
 function bgOpenDB() {
   return new Promise((resolve, reject) => {
@@ -319,17 +329,18 @@ function bgApply(dataUrl) {
 function bgRenderGrid() {
   const grid = document.getElementById('bgGrid');
   const empty = document.getElementById('bgEmpty');
+  const backgrounds = bgGetAll();
 
   Array.from(grid.querySelectorAll('.bg-thumb-wrap')).forEach(el => el.remove());
 
-  if (bgLibrary.length === 0) {
+  if (backgrounds.length === 0) {
     empty.style.display = '';
     bgApply(null);
     return;
   }
   empty.style.display = 'none';
 
-  bgLibrary.forEach(bg => {
+  backgrounds.forEach(bg => {
     const wrap = document.createElement('div');
     wrap.className = 'bg-thumb-wrap';
 
@@ -337,6 +348,7 @@ function bgRenderGrid() {
     img.className = 'bg-thumb' + (bg.id === bgActiveId ? ' selected' : '');
     img.src = bg.dataUrl;
     img.title = bg.name;
+    const isBundled = !!bg.isBundled;
     img.onclick = () => {
       bgActiveId = bg.id;
       bgApply(bg.dataUrl);
@@ -345,10 +357,11 @@ function bgRenderGrid() {
 
     // ★ Star = set as default (auto-applied on next load)
     const star = document.createElement('button');
-    star.className = 'bg-thumb-star' + (bg.isDefault ? ' is-default' : '');
+    star.className = 'bg-thumb-star' + (bg.isDefault ? ' is-default' : '') + (isBundled ? ' is-hidden' : '');
     star.title = bg.isDefault ? 'Default background' : 'Set as default';
     star.textContent = '★';
     star.onclick = async (e) => {
+      if (isBundled) return;
       e.stopPropagation();
       await bgClearDefault();
       bgLibrary = bgLibrary.map(b => ({ ...b, isDefault: false }));
@@ -361,17 +374,17 @@ function bgRenderGrid() {
     };
 
     const del = document.createElement('button');
-    del.className = 'bg-thumb-del';
+    del.className = 'bg-thumb-del' + (isBundled ? ' is-hidden' : '');
     del.title = 'Remove';
     del.textContent = '×';
     del.onclick = async (e) => {
+      if (isBundled) return;
       e.stopPropagation();
       await bgDeleteDB(bg.id);
       bgLibrary = bgLibrary.filter(b => b.id !== bg.id);
       if (bgActiveId === bg.id) {
-        const next = bgLibrary[0] || null;
-        bgActiveId = next ? next.id : null;
-        bgApply(next ? next.dataUrl : null);
+        bgActiveId = null;
+        bgApply(null);
       }
       bgRenderGrid();
     };
@@ -379,10 +392,16 @@ function bgRenderGrid() {
     wrap.appendChild(img);
     wrap.appendChild(star);
     wrap.appendChild(del);
+    if (isBundled) {
+      const badge = document.createElement('span');
+      badge.className = 'bg-thumb-badge';
+      badge.textContent = 'Local';
+      wrap.appendChild(badge);
+    }
     grid.appendChild(wrap);
   });
 
-  const activeBg = bgLibrary.find(b => b.id === bgActiveId) || bgLibrary[0];
+  const activeBg = backgrounds.find(b => b.id === bgActiveId) || bgLibrary[0];
   if (activeBg) {
     bgActiveId = activeBg.id;
     bgApply(activeBg.dataUrl);
@@ -613,13 +632,13 @@ window.addEventListener('DOMContentLoaded', function () {
         document.getElementById('hexPrimary').value = '#2D7DF3';
         document.getElementById('hexSecondary').value = '#161B1E';
         document.getElementById('hexTertiary').value = '#A7B5CA';
-        const activeBg = bgLibrary.find(b => b.id === bgActiveId);
+        const activeBg = bgGetAll().find(b => b.id === bgActiveId);
         bgApply(activeBg ? activeBg.dataUrl : null);
       } else {
         document.getElementById('hexPrimary').value = '#4aeabc';
         document.getElementById('hexSecondary').value = '#ffffff';
         document.getElementById('hexTertiary').value = '#d4c97a';
-        const activeBg = bgLibrary.find(b => b.id === bgActiveId);
+        const activeBg = bgGetAll().find(b => b.id === bgActiveId);
         bgApply(activeBg ? activeBg.dataUrl : null);
       }
       ['Primary','Secondary','Tertiary'].forEach(k => {
