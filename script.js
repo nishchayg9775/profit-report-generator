@@ -261,7 +261,7 @@ const BUNDLED_BACKGROUNDS = [
   { id: 'bundled-137497973-9c1d7588-1a4f-1', name: '137497973_9c1d7588-1a4f-1.jpg', dataUrl: bgBuildBundledUrl('137497973_9c1d7588-1a4f-1.jpg'), isBundled: true },
   { id: 'bundled-137497973-9c1d7588-1a4f-11ee-8564-42010a280815', name: '137497973_9c1d7588-1a4f-11ee-8564-42010a280815.jpg', dataUrl: bgBuildBundledUrl('137497973_9c1d7588-1a4f-11ee-8564-42010a280815.jpg'), isBundled: true },
   { id: 'bundled-dasa', name: 'dasa.jpg', dataUrl: bgBuildBundledUrl('dasa.jpg'), isBundled: true },
-  { id: 'bundled-2', name: '_ (2).jpeg', dataUrl: bgBuildBundledUrl('_ (2).jpeg'), isBundled: true }
+  { id: 'bundled-2', name: 'bg-4.jpeg', dataUrl: bgBuildBundledUrl('bg-4.jpeg'), isBundled: true }
 ];
 
 function bgGetAll() {
