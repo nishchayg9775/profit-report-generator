@@ -253,11 +253,15 @@ function download() {
 let bgDB = null;
 let bgLibrary = [];   // in-memory cache [{id, name, dataUrl, isDefault}]
 let bgActiveId = null;
+function bgBuildBundledUrl(fileName) {
+  const encodedPath = fileName.split('/').map(encodeURIComponent).join('/');
+  return new URL(encodedPath, window.location.href).href;
+}
 const BUNDLED_BACKGROUNDS = [
-  { id: 'bundled-137497973-9c1d7588-1a4f-1', name: '137497973_9c1d7588-1a4f-1.jpg', dataUrl: encodeURI('137497973_9c1d7588-1a4f-1.jpg'), isBundled: true },
-  { id: 'bundled-137497973-9c1d7588-1a4f-11ee-8564-42010a280815', name: '137497973_9c1d7588-1a4f-11ee-8564-42010a280815.jpg', dataUrl: encodeURI('137497973_9c1d7588-1a4f-11ee-8564-42010a280815.jpg'), isBundled: true },
-  { id: 'bundled-dasa', name: 'dasa.jpg', dataUrl: encodeURI('dasa.jpg'), isBundled: true },
-  { id: 'bundled-2', name: '_ (2).jpeg', dataUrl: encodeURI('_ (2).jpeg'), isBundled: true }
+  { id: 'bundled-137497973-9c1d7588-1a4f-1', name: '137497973_9c1d7588-1a4f-1.jpg', dataUrl: bgBuildBundledUrl('137497973_9c1d7588-1a4f-1.jpg'), isBundled: true },
+  { id: 'bundled-137497973-9c1d7588-1a4f-11ee-8564-42010a280815', name: '137497973_9c1d7588-1a4f-11ee-8564-42010a280815.jpg', dataUrl: bgBuildBundledUrl('137497973_9c1d7588-1a4f-11ee-8564-42010a280815.jpg'), isBundled: true },
+  { id: 'bundled-dasa', name: 'dasa.jpg', dataUrl: bgBuildBundledUrl('dasa.jpg'), isBundled: true },
+  { id: 'bundled-2', name: '_ (2).jpeg', dataUrl: bgBuildBundledUrl('_ (2).jpeg'), isBundled: true }
 ];
 
 function bgGetAll() {
