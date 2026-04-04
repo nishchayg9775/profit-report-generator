@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Univest Creative Studio</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,600;0,700;0,800;1,300;1,400;1,600;1,700;1,800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -12,28 +12,27 @@
 <div class="app">
   <div class="panel">
     <div class="panel-content">
-      <div class="panel-header" style="padding-bottom: 0; border-bottom: none;">
+      <div class="panel-header">
         <h1>Profit <span>Report</span> Generator</h1>
-        <p>Design stunning trade summaries</p>
-        
-        <!-- Tabs Nav -->
+        <p>Switch between multiple creative report styles and export polished trade summaries.</p>
+
         <div class="tabs">
-          <button class="tab-btn active" data-tab="data">Data</button>
-          <button class="tab-btn" data-tab="layout">Layout</button>
-          <button class="tab-btn" data-tab="style">Style</button>
+          <button type="button" class="tab-btn active" data-tab="data">Data</button>
+          <button type="button" class="tab-btn" data-tab="layout">Layout</button>
+          <button type="button" class="tab-btn" data-tab="style">Style</button>
         </div>
       </div>
 
       <div class="panel-body">
-        <!-- =================== DATA TAB =================== -->
         <div class="tab-pane active" id="tab-data">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <label style="margin:0;">Trade Data</label>
-            <div>
-              <input type="file" id="csvUpload" accept=".csv" style="display:none;">
-              <label for="csvUpload" class="btn btn-secondary" style="padding: 4px 8px; font-size: 10px; cursor: pointer; text-transform: uppercase;">Import CSV</label>
+          <div class="top-row">
+            <label class="inline-label">Trade Data</label>
+            <div class="inline-actions">
+              <input type="file" id="csvUpload" accept=".csv" hidden>
+              <label for="csvUpload" class="btn btn-secondary btn-compact">Import CSV</label>
             </div>
           </div>
+
           <textarea id="inputText" rows="18">Equity:
 OIL: 3.33% in 5 Days
 TATAINVEST: 2.02% in 1 Hour
@@ -52,55 +51,87 @@ BDL: 5.94% in 46 Mins
 CANBK: 4.39% in 22 Mins
 NIFTY 50: 2.93% in 57 Mins</textarea>
 
-          <div class="controls" style="margin-top: 14px;">
+          <div class="controls controls-tight">
             <div class="control-group full">
               <label>SEBI Registration</label>
               <input type="text" id="sebiReg" value="INH000013776">
             </div>
+
             <div class="control-group full">
               <label>Disclaimer</label>
-              <textarea id="disclaimer" rows="3" style="font-family:'Segoe UI',sans-serif;font-size:11px;">Investment in securities market are subject to market risks. Read all the related documents carefully before investing. The securities quoted are for illustration only and are not recommendatory. The information provided is intended for educational purposes only, for further disclosures, visit https://univest.in / Univest App.</textarea>
+              <textarea id="disclaimer" rows="3" class="disclaimer-input">Investment in securities market are subject to market risks. Read all the related documents carefully before investing. The securities quoted are for illustration only and are not recommendatory. The information provided is intended for educational purposes only, for further disclosures, visit https://univest.in / Univest App.</textarea>
             </div>
           </div>
         </div>
 
-        <!-- =================== LAYOUT TAB =================== -->
         <div class="tab-pane" id="tab-layout">
-          <div class="controls" style="margin-top:0;">
+          <div class="controls controls-tight">
             <div class="control-group full">
-              <label>Card Format (Preset)</label>
+              <label>Design Preset</label>
+              <div class="preset-picker">
+                <button type="button" class="preset-btn active" data-template="classic">
+                  <span class="preset-name">Classic Grid</span>
+                  <span class="preset-desc">Original clean board layout</span>
+                </button>
+                <button type="button" class="preset-btn" data-template="spotlight">
+                  <span class="preset-name">Spotlight Table</span>
+                  <span class="preset-desc">Pricing-table inspired highlight bands</span>
+                </button>
+                <button type="button" class="preset-btn" data-template="stacked">
+                  <span class="preset-name">Stacked Cards</span>
+                  <span class="preset-desc">Premium section cards with bold accents</span>
+                </button>
+                <button type="button" class="preset-btn" data-template="tagged">
+                  <span class="preset-name">Neon Tags</span>
+                  <span class="preset-desc">Floating section cards with side ribbons</span>
+                </button>
+                <button type="button" class="preset-btn" data-template="ledger">
+                  <span class="preset-name">Ledger Tape</span>
+                  <span class="preset-desc">Dense market-board rows for compact exports</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="control-group full">
+              <label>Card Format</label>
               <select id="cardFormat">
-                <option value="auto" selected>Auto Fit (Default)</option>
+                <option value="auto" selected>Auto Fit</option>
                 <option value="1:1">Instagram Square (1:1)</option>
                 <option value="9:16">Story / Reels (9:16)</option>
                 <option value="16:9">Twitter / LinkedIn (16:9)</option>
               </select>
             </div>
+
             <div class="control-group full">
-              <label>Card Width (px)</label>
+              <label>Card Width</label>
               <input type="range" id="cardWidth" min="400" max="1000" value="600">
               <div class="range-val" id="cardWidthVal">600px</div>
             </div>
+
             <div class="control-group full">
-              <label>Overall Scale (%)</label>
+              <label>Overall Scale</label>
               <input type="range" id="overallScale" min="50" max="150" value="100" step="5">
               <div class="range-val" id="overallScaleVal">100%</div>
             </div>
+
             <div class="control-group full">
-              <label>Heading Size (%)</label>
+              <label>Heading Size</label>
               <input type="range" id="headingScale" min="50" max="200" value="90" step="5">
               <div class="range-val" id="headingScaleVal">90%</div>
             </div>
+
             <div class="control-group full">
-              <label>Table Spacing</label>
+              <label>Section Spacing</label>
               <input type="range" id="tableSpacing" min="50" max="200" value="100" step="5">
               <div class="range-val" id="tableSpacingVal">100%</div>
             </div>
+
             <div class="control-group full">
-              <label>Table Border (px)</label>
+              <label>Border Weight</label>
               <input type="range" id="tableBorder" min="0" max="10" value="1" step="1">
               <div class="range-val" id="tableBorderVal">1px</div>
             </div>
+
             <div class="control-group full">
               <label>Font Family</label>
               <select id="fontFamily">
@@ -113,24 +144,23 @@ NIFTY 50: 2.93% in 57 Mins</textarea>
           </div>
         </div>
 
-        <!-- =================== STYLE TAB =================== -->
         <div class="tab-pane" id="tab-style">
-          <div class="controls" style="margin-top:0;">
+          <div class="controls controls-tight">
             <div class="control-group full">
               <label>Theme</label>
-              <div style="display: flex; gap: 10px;">
-                <button class="btn btn-secondary theme-btn active" data-theme="dark" style="flex:1;">Dark</button>
-                <button class="btn btn-secondary theme-btn" data-theme="light" style="flex:1;">Light</button>
+              <div class="theme-switch">
+                <button type="button" class="btn btn-secondary theme-btn active" data-theme="dark">Dark</button>
+                <button type="button" class="btn btn-secondary theme-btn" data-theme="light">Light</button>
               </div>
             </div>
 
             <div class="control-group full">
-              <label>Card Logo (Optional)</label>
-              <div style="display: flex; gap: 8px;">
-                <input type="file" id="logoUpload" accept="image/*" style="display:none;">
-                <label for="logoUpload" class="btn btn-secondary" style="flex:1; text-align:center; padding: 7px;">Upload Logo</label>
-                <button class="btn btn-secondary" id="removeLogo" style="padding: 0 10px; display: none;" title="Remove Logo">×</button>
-                <select id="logoPos" style="flex: 1;">
+              <label>Card Logo</label>
+              <div class="logo-row">
+                <input type="file" id="logoUpload" accept="image/*" hidden>
+                <label for="logoUpload" class="btn btn-secondary logo-upload-btn">Upload Logo</label>
+                <button type="button" class="btn btn-secondary icon-btn" id="removeLogo" title="Remove Logo">×</button>
+                <select id="logoPos">
                   <option value="top-left">Top Left</option>
                   <option value="top-right">Top Right</option>
                   <option value="bottom-center">Bottom Center</option>
@@ -139,97 +169,99 @@ NIFTY 50: 2.93% in 57 Mins</textarea>
             </div>
 
             <div class="control-group full">
-              <label>Global Color Tokens (P/S/T)</label>
-              <div style="display: flex; gap: 10px;">
-                <div style="flex: 1;">
-                  <div style="display: flex; gap: 4px; align-items: center; margin-bottom: 4px;">
-                    <input type="color" id="colorPrimary" value="#4aeabc" style="width: 24px; height: 24px; padding: 0; border: none; background: none; cursor: pointer; flex-shrink: 0;">
-                    <input type="text" id="hexPrimary" value="#4aeabc" style="width: 100%; padding: 6px; text-transform: uppercase;">
+              <label>Global Color Tokens</label>
+              <div class="token-grid">
+                <div class="token-card">
+                  <div class="token-input-row">
+                    <input type="color" id="colorPrimary" value="#4aeabc">
+                    <input type="text" id="hexPrimary" value="#4aeabc">
                   </div>
-                  <div style="display: flex; gap: 4px;">
-                     <button class="btn btn-secondary fmt-tog" data-cat="primary" data-fmt="b" style="padding: 2px; font-size: 11px; font-weight: bold; flex: 1;">B</button>
-                     <button class="btn btn-secondary fmt-tog" data-cat="primary" data-fmt="i" style="padding: 2px; font-size: 11px; font-style: italic; flex: 1;">I</button>
-                     <button class="btn btn-secondary fmt-tog" data-cat="primary" data-fmt="u" style="padding: 2px; font-size: 11px; text-decoration: underline; flex: 1;">U</button>
-                  </div>
-                </div>
-                <div style="flex: 1;">
-                  <div style="display: flex; gap: 4px; align-items: center; margin-bottom: 4px;">
-                    <input type="color" id="colorSecondary" value="#ffffff" style="width: 24px; height: 24px; padding: 0; border: none; background: none; cursor: pointer; flex-shrink: 0;">
-                    <input type="text" id="hexSecondary" value="#ffffff" style="width: 100%; padding: 6px; text-transform: uppercase;">
-                  </div>
-                  <div style="display: flex; gap: 4px;">
-                     <button class="btn btn-secondary fmt-tog" data-cat="secondary" data-fmt="b" style="padding: 2px; font-size: 11px; font-weight: bold; flex: 1;">B</button>
-                     <button class="btn btn-secondary fmt-tog" data-cat="secondary" data-fmt="i" style="padding: 2px; font-size: 11px; font-style: italic; flex: 1;">I</button>
-                     <button class="btn btn-secondary fmt-tog" data-cat="secondary" data-fmt="u" style="padding: 2px; font-size: 11px; text-decoration: underline; flex: 1;">U</button>
+                  <div class="token-format-row">
+                    <button type="button" class="btn btn-secondary fmt-tog" data-cat="primary" data-fmt="b">B</button>
+                    <button type="button" class="btn btn-secondary fmt-tog" data-cat="primary" data-fmt="i">I</button>
+                    <button type="button" class="btn btn-secondary fmt-tog" data-cat="primary" data-fmt="u">U</button>
                   </div>
                 </div>
-                <div style="flex: 1;">
-                  <div style="display: flex; gap: 4px; align-items: center; margin-bottom: 4px;">
-                    <input type="color" id="colorTertiary" value="#d4c97a" style="width: 24px; height: 24px; padding: 0; border: none; background: none; cursor: pointer; flex-shrink: 0;">
-                    <input type="text" id="hexTertiary" value="#d4c97a" style="width: 100%; padding: 6px; text-transform: uppercase;">
+
+                <div class="token-card">
+                  <div class="token-input-row">
+                    <input type="color" id="colorSecondary" value="#ffffff">
+                    <input type="text" id="hexSecondary" value="#ffffff">
                   </div>
-                  <div style="display: flex; gap: 4px;">
-                     <button class="btn btn-secondary fmt-tog" data-cat="tertiary" data-fmt="b" style="padding: 2px; font-size: 11px; font-weight: bold; flex: 1;">B</button>
-                     <button class="btn btn-secondary fmt-tog" data-cat="tertiary" data-fmt="i" style="padding: 2px; font-size: 11px; font-style: italic; flex: 1;">I</button>
-                     <button class="btn btn-secondary fmt-tog" data-cat="tertiary" data-fmt="u" style="padding: 2px; font-size: 11px; text-decoration: underline; flex: 1;">U</button>
+                  <div class="token-format-row">
+                    <button type="button" class="btn btn-secondary fmt-tog" data-cat="secondary" data-fmt="b">B</button>
+                    <button type="button" class="btn btn-secondary fmt-tog" data-cat="secondary" data-fmt="i">I</button>
+                    <button type="button" class="btn btn-secondary fmt-tog" data-cat="secondary" data-fmt="u">U</button>
+                  </div>
+                </div>
+
+                <div class="token-card">
+                  <div class="token-input-row">
+                    <input type="color" id="colorTertiary" value="#d4c97a">
+                    <input type="text" id="hexTertiary" value="#d4c97a">
+                  </div>
+                  <div class="token-format-row">
+                    <button type="button" class="btn btn-secondary fmt-tog" data-cat="tertiary" data-fmt="b">B</button>
+                    <button type="button" class="btn btn-secondary fmt-tog" data-cat="tertiary" data-fmt="i">I</button>
+                    <button type="button" class="btn btn-secondary fmt-tog" data-cat="tertiary" data-fmt="u">U</button>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div class="control-group full" style="margin-bottom: 14px;">
+            <div class="control-group full">
               <label>Selective Text Rendering</label>
-              <div style="display: flex; gap: 8px; align-items: center;">
-                <button id="btnBold" class="btn btn-secondary" style="padding: 4px 10px; font-size: 13px; font-weight: bold;" title="Bold">B</button>
-                <button id="btnItalic" class="btn btn-secondary" style="padding: 4px 10px; font-size: 13px; font-style: italic;" title="Italic">I</button>
-                <button id="btnUnderline" class="btn btn-secondary" style="padding: 4px 10px; font-size: 13px; text-decoration: underline;" title="Underline">U</button>
-                <div style="width: 1px; height: 24px; background: #2a2d3a; margin: 0 4px;"></div>
-                <input type="color" id="highlightColor" value="#ffeb3b" style="width: 24px; height: 24px; padding: 0; border: none; background: none; cursor: pointer; flex-shrink: 0;" title="Text Color">
-                <button id="btnHighlight" class="btn btn-secondary" style="padding: 5px 10px; font-size: 11px;">Apply Color</button>
+              <div class="rich-toolbar">
+                <button type="button" id="btnBold" class="btn btn-secondary toolbar-btn" title="Bold">B</button>
+                <button type="button" id="btnItalic" class="btn btn-secondary toolbar-btn toolbar-italic" title="Italic">I</button>
+                <button type="button" id="btnUnderline" class="btn btn-secondary toolbar-btn toolbar-underline" title="Underline">U</button>
+                <span class="toolbar-divider"></span>
+                <input type="color" id="highlightColor" value="#ffeb3b" title="Text Color">
+                <button type="button" id="btnHighlight" class="btn btn-secondary btn-compact">Apply Color</button>
               </div>
-              <p style="font-size:9px; color:#aaa; margin-top:6px;">Select text directly on the card &rarr; click styling tool to format bounds.</p>
+              <p class="helper-text">Select text directly on the card and use these controls to style only that portion.</p>
             </div>
 
-            <!-- BACKGROUND PICKER -->
-            <div class="bg-picker">
-              <label style="border-top:1px solid #2a2d3a; padding-top:14px;">Background Elements</label>
-              <div class="file-upload" id="bgDropZone" style="margin-bottom:8px;">
+            <div class="bg-picker control-group full">
+              <label>Background Elements</label>
+              <div class="file-upload" id="bgDropZone">
                 <input type="file" id="bgUploadInput" accept="image/*" multiple>
-                <label class="file-upload-btn" id="bgDropLabel" for="bgUploadInput" style="cursor:pointer; padding:16px 12px; justify-content:center;">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <label class="file-upload-btn" id="bgDropLabel" for="bgUploadInput">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="17 8 12 3 7 8"></polyline>
+                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                  </svg>
                   Upload or drag background(s)
                 </label>
               </div>
+
               <div class="bg-grid" id="bgGrid">
                 <span class="bg-empty" id="bgEmpty">No backgrounds uploaded yet.</span>
               </div>
             </div>
-
           </div>
-        </div>
-      </div> <!-- /panel-body -->
-
-      <!-- Sticky Footer / Output -->
-      <div class="panel-footer">
-        <div class="control-group full" style="margin-bottom: 12px;">
-          <input type="text" id="fileName" placeholder="Auto-generated file name on click">
-        </div>
-        <div class="actions" style="margin-top:0;">
-          <button class="btn btn-primary" onclick="generate()">Calculate & Render</button>
-          <button class="btn btn-download" onclick="download()">Export Design</button>
         </div>
       </div>
 
+      <div class="panel-footer">
+        <div class="control-group full">
+          <input type="text" id="fileName" placeholder="Auto-generated file name on export">
+        </div>
+        <div class="actions">
+          <button type="button" class="btn btn-primary" onclick="generate()">Calculate &amp; Render</button>
+          <button type="button" class="btn btn-download" onclick="download()">Export Design</button>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- PREVIEW AREA -->
   <div class="preview-area">
-    <div class="card" id="card">
+    <div class="card template-classic theme-dark" id="card">
       <div class="card-inner" id="cardInner">
         <div class="card-sebi" id="sebiLine"></div>
         <div class="card-title" id="titleBlock"></div>
-        <div id="tablesContainer"></div>
+        <div class="template-container template-classic" id="tablesContainer"></div>
         <div class="card-disclaimer" id="disclaimerDisplay"></div>
       </div>
     </div>
