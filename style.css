@@ -552,6 +552,47 @@ select:focus {
   gap: 10px;
 }
 
+.ai-quickset {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 18px;
+  border: 1px solid #dce8f5;
+  background: linear-gradient(180deg, rgba(248, 251, 255, 0.98), rgba(240, 247, 255, 0.9));
+}
+
+.ai-quickset-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8a9db6;
+}
+
+.ai-quickset-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ai-quick-btn {
+  flex: 1 1 150px;
+}
+
+.ai-quick-note {
+  font-size: 11px;
+  line-height: 1.5;
+  color: #6a7f98;
+}
+
+.ai-quick-note code {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(45, 125, 243, 0.08);
+  color: #215bb3;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
 .ai-toggle {
   display: flex;
   align-items: center;

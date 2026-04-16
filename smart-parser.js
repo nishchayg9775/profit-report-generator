@@ -859,7 +859,26 @@
         });
 
         if (!response.ok) {
-          return { status: 'error', reason: `AI request failed with ${response.status}.` };
+          let detail = '';
+          try {
+            detail = extractResponseText(await response.json()) || '';
+          } catch (jsonError) {
+            try {
+              detail = await response.text();
+            } catch (textError) {
+              detail = '';
+            }
+          }
+
+          if (response.status === 404 && /127\.0\.0\.1|localhost/i.test(config.endpoint)) {
+            return { status: 'error', reason: `Local AI server responded with 404. Start Ollama and confirm the OpenAI-compatible endpoint is available at ${config.endpoint}.` };
+          }
+
+          if (response.status === 400 && /model/i.test(detail) && /not found|pull|unknown/i.test(detail)) {
+            return { status: 'error', reason: `Model ${config.model} is not available yet. Run \`ollama pull ${config.model}\` and try again.` };
+          }
+
+          return { status: 'error', reason: detail ? `AI request failed with ${response.status}: ${detail}` : `AI request failed with ${response.status}.` };
         }
 
         const json = await response.json();
@@ -875,7 +894,14 @@
 
         return { status: 'success', model: aiModel };
       } catch (error) {
-        return { status: 'error', reason: error?.message || 'AI request failed.' };
+        const message = error?.message || 'AI request failed.';
+        if (/Failed to fetch|NetworkError|fetch/i.test(message) && /127\.0\.0\.1|localhost/i.test(config.endpoint)) {
+          return {
+            status: 'error',
+            reason: `Could not reach local AI server at ${config.endpoint}. Install/start Ollama, run \`ollama pull ${config.model}\`, then keep Ollama running.`
+          };
+        }
+        return { status: 'error', reason: message };
       }
     }
 

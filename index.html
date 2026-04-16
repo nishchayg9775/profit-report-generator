@@ -110,6 +110,14 @@ NIFTY 50: 2.93% in 57 Mins</textarea>
                       <input type="checkbox" id="aiAssistEnabled">
                       <span>Enable automatic AI fallback on low-confidence parses</span>
                     </label>
+                    <div class="ai-quickset">
+                      <div class="ai-quickset-label">Quick setup</div>
+                      <div class="ai-quickset-actions">
+                        <button type="button" class="btn btn-secondary btn-compact ai-quick-btn" data-ai-endpoint="http://127.0.0.1:11434/v1/chat/completions" data-ai-model="qwen3:8b" data-ai-key="ollama">Ollama Qwen3 8B</button>
+                        <button type="button" class="btn btn-secondary btn-compact ai-quick-btn" data-ai-endpoint="http://127.0.0.1:11434/v1/chat/completions" data-ai-model="qwen3:4b" data-ai-key="ollama">Lite Qwen3 4B</button>
+                      </div>
+                      <div class="ai-quick-note" id="aiQuickNote">Recommended free local setup. Run <code>ollama pull qwen3:8b</code> once, then keep Ollama running.</div>
+                    </div>
                     <input type="text" id="aiEndpoint" placeholder="AI endpoint URL">
                     <input type="text" id="aiModel" placeholder="AI model name">
                     <input type="password" id="aiApiKey" placeholder="API key stored only in this browser">

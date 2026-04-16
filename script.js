@@ -68,6 +68,20 @@ let bgActiveId = null;
 let lastParseModel = null;
 let aiAssistState = { pending: false, lastRequestedText: '' };
 let parseReviewExpanded = false;
+const AI_QUICK_PRESETS = [
+  {
+    endpoint: 'http://127.0.0.1:11434/v1/chat/completions',
+    model: 'qwen3:8b',
+    apiKey: 'ollama',
+    note: 'Recommended local setup. Run `ollama pull qwen3:8b` once, then keep Ollama running.'
+  },
+  {
+    endpoint: 'http://127.0.0.1:11434/v1/chat/completions',
+    model: 'qwen3:4b',
+    apiKey: 'ollama',
+    note: 'Lighter local setup. Run `ollama pull qwen3:4b` if you want lower RAM usage.'
+  }
+];
 
 function bgBuildBundledUrl(fileName) {
   const encodedPath = fileName.split('/').map(encodeURIComponent).join('/');
@@ -690,15 +704,39 @@ function syncAiConfigUI() {
   const model = document.getElementById('aiModel');
   const apiKey = document.getElementById('aiApiKey');
   const runButton = document.getElementById('runAiAssist');
+  const quickNote = document.getElementById('aiQuickNote');
+  const quickButtons = document.querySelectorAll('.ai-quick-btn');
 
   if (enabled) enabled.checked = !!config.enabled;
   if (endpoint) endpoint.value = config.endpoint || '';
   if (model) model.value = config.model || '';
   if (apiKey) apiKey.value = config.apiKey || '';
   if (runButton) runButton.disabled = aiAssistState.pending || !config.enabled || !config.endpoint || !config.model || !config.apiKey;
+  quickButtons.forEach(button => {
+    const isActive = button.dataset.aiEndpoint === (config.endpoint || '') && button.dataset.aiModel === (config.model || '');
+    button.classList.toggle('active', isActive);
+  });
+
+  const matchedPreset = AI_QUICK_PRESETS.find(preset => preset.endpoint === (config.endpoint || '') && preset.model === (config.model || ''));
+  if (quickNote && matchedPreset) quickNote.innerHTML = `${matchedPreset.note} API key stays local in this browser.`;
+  else if (quickNote) quickNote.innerHTML = 'Recommended free local setup. Run <code>ollama pull qwen3:8b</code> once, then keep Ollama running.';
 
   if (!config.enabled) setAiStatus('AI assist is off. Deterministic parsing is still fully active.');
   else if (!config.endpoint || !config.model || !config.apiKey) setAiStatus('AI assist enabled, but endpoint, model, or API key is still missing.');
+}
+
+function applyAiQuickPreset(endpoint, model, apiKey) {
+  const parser = getParserApi();
+  parser.setAiConfig({
+    enabled: true,
+    endpoint,
+    model,
+    apiKey,
+    autoRun: true
+  });
+  aiAssistState.lastRequestedText = '';
+  syncAiConfigUI();
+  setAiStatus(`Local AI preset saved. If needed, run \`ollama pull ${model}\` before using AI assist.`);
 }
 
 function replaceInputLine(rawLine, nextLine) {
@@ -2196,6 +2234,11 @@ window.addEventListener('DOMContentLoaded', () => {
     if (parser.learnCorrections) parser.learnCorrections((lastParseModel.reviewItems || []).filter(item => item.suggestion));
     document.getElementById('inputText').value = lastParseModel.normalizedText;
     generate();
+  });
+  document.querySelectorAll('.ai-quick-btn').forEach(button => {
+    button.addEventListener('click', () => {
+      applyAiQuickPreset(button.dataset.aiEndpoint, button.dataset.aiModel, button.dataset.aiKey || 'ollama');
+    });
   });
   document.getElementById('saveAiSettings').addEventListener('click', () => {
     const parser = getParserApi();
