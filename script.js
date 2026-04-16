@@ -78,32 +78,91 @@ const BUNDLED_BACKGROUNDS = [
   { id: 'bundled-4', name: 'bg-4.jpeg', dataUrl: bgBuildBundledUrl('bg-4.jpeg'), isBundled: true }
 ];
 
+function cleanInputLine(rawLine) {
+  return rawLine
+    .replace(/[\u200B-\u200D\u2060\uFEFF]/g, '')
+    .replace(/\u00A0/g, ' ')
+    .replace(/[•●]/g, '*')
+    .trim();
+}
+
+function normalizeSectionName(rawName) {
+  const name = rawName.replace(/\*/g, '').trim().toUpperCase();
+  if (name === 'EQUITIES' || name === 'EQUITY') return 'EQUITY';
+  if (name === 'FUTURE' || name === 'FUTURES') return 'FUTURES';
+  if (name === 'OPTION' || name === 'OPTIONS') return 'OPTIONS';
+  if (name.startsWith('COMMOD')) return 'COMMODITY';
+  return name;
+}
+
+function normalizeDuration(duration) {
+  let normalized = duration.trim();
+  normalized = normalized.replace(/^(?:the\s+)?same day$/i, 'Same Day');
+  normalized = normalized.replace(/^(?:just|only|the)\s+/i, '');
+  return normalized
+    .split(/\s+/)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+}
+
+function normalizeReturns(returns, sectionName) {
+  let normalized = returns.trim().replace(/\s+/g, ' ');
+
+  if (/futures/i.test(sectionName)) {
+    let sign = '';
+    if (normalized.startsWith('-')) {
+      sign = '-';
+      normalized = normalized.slice(1).trim();
+    }
+
+    normalized = normalized
+      .replace(/â‚¹|₹/g, '')
+      .replace(/^rs\.?\s*/i, '')
+      .replace(/^inr\s*/i, '')
+      .replace(/\/-\s*/g, '')
+      .replace(/\bper\s*lot\b/ig, '')
+      .trim();
+
+    const numeric = normalized.replace(/,/g, '');
+    if (/^\d+(?:\.\d+)?$/.test(numeric)) {
+      const [whole, fraction] = numeric.split('.');
+      const formatted = Number(whole).toLocaleString('en-IN') + (fraction ? `.${fraction}` : '');
+      return `${sign}â‚¹${formatted}`;
+    }
+
+    return `${sign}â‚¹${normalized}`.trim();
+  }
+
+  if (!normalized.includes('%')) return `${normalized}%`;
+  return normalized;
+}
+
 function parseInput(text) {
   const sections = [];
   let currentSection = null;
 
   for (const rawLine of text.split('\n')) {
-    const line = rawLine.trim();
+    const line = cleanInputLine(rawLine);
     if (!line) continue;
 
-    if (/^(Equity|Futures?|Options?|Commodity)\s*:?\s*$/i.test(line)) {
-      let name = line.replace(/\s*:?\s*$/, '').toUpperCase();
-      if (name === 'FUTURE') name = 'FUTURES';
-      if (name === 'OPTION') name = 'OPTIONS';
-      currentSection = { name, rows: [] };
+    const plainLine = line.replace(/\*/g, '').trim();
+    const sectionMatch = plainLine.match(/^(Equit(?:y|ies)|Futures?|Options?|Commodity)\s*(?:\((\d+)\))?\s*:?\s*$/i);
+    if (sectionMatch) {
+      currentSection = { name: normalizeSectionName(sectionMatch[1]), rows: [] };
       sections.push(currentSection);
       continue;
     }
 
     if (!currentSection) continue;
 
-    const moreMatch = line.match(/^[+&]\s*(\d+)\s+more/i);
+    const moreMatch = plainLine.match(/^[+&]\s*(\d+)\s+more/i);
     if (moreMatch) {
       currentSection.more = `+${moreMatch[1]} more`;
       continue;
     }
 
-    const rowMatch = line.match(/^(.+?):\s*(.+?)\s+(?:in\s+|on\s+)(.+)$/i);
+    const entryLine = plainLine.replace(/^[\-\*]+\s*/, '').trim();
+    const rowMatch = entryLine.match(/^(.+?)(?:\s*[:\-–]\s*)(.+?)\s+(?:in\s+|on\s+)(.+)$/i);
     if (!rowMatch) continue;
 
     let returns = rowMatch[2].trim();
@@ -122,6 +181,69 @@ function parseInput(text) {
       name: rowMatch[1].trim().toUpperCase(),
       returns,
       duration
+    });
+  }
+
+  return sections.sort((a, b) => (SECTION_ORDER[a.name] ?? 99) - (SECTION_ORDER[b.name] ?? 99));
+}
+
+function normalizeParsedReturn(returns, sectionName) {
+  let normalized = returns.trim().replace(/\s+/g, ' ');
+
+  if (/futures/i.test(sectionName)) {
+    const sign = normalized.startsWith('-') ? '-' : '';
+    const compact = normalized
+      .replace(/\/-\s*/g, '')
+      .replace(/\bper\s*lot\b/ig, '')
+      .trim();
+    const numeric = compact.replace(/[^0-9.,]/g, '').replace(/,/g, '');
+
+    if (/^\d+(?:\.\d+)?$/.test(numeric)) {
+      const [whole, fraction] = numeric.split('.');
+      const formatted = Number(whole).toLocaleString('en-IN') + (fraction ? `.${fraction}` : '');
+      return `${sign}Rs. ${formatted}`;
+    }
+
+    const stripped = compact.replace(/^[^\d-]+/, '').trim();
+    return `${sign}Rs. ${stripped || compact}`.trim();
+  }
+
+  if (!normalized.includes('%')) return `${normalized}%`;
+  return normalized;
+}
+
+function parseInput(text) {
+  const sections = [];
+  let currentSection = null;
+
+  for (const rawLine of text.split('\n')) {
+    const line = cleanInputLine(rawLine);
+    if (!line) continue;
+
+    const plainLine = line.replace(/\*/g, '').trim();
+    const sectionMatch = plainLine.match(/^(Equit(?:y|ies)|Futures?|Options?|Commodity)\s*(?:\((\d+)\))?\s*:?\s*$/i);
+    if (sectionMatch) {
+      currentSection = { name: normalizeSectionName(sectionMatch[1]), rows: [] };
+      sections.push(currentSection);
+      continue;
+    }
+
+    if (!currentSection) continue;
+
+    const moreMatch = plainLine.match(/^[+&]\s*(\d+)\s+more/i);
+    if (moreMatch) {
+      currentSection.more = `+${moreMatch[1]} more`;
+      continue;
+    }
+
+    const entryLine = plainLine.replace(/^[\-\*]+\s*/, '').trim();
+    const rowMatch = entryLine.match(/^(.+?)(?:\s*[:\-\u2013\u2014]\s*)(.+?)\s+(?:in\s+|on\s+)(.+)$/i);
+    if (!rowMatch) continue;
+
+    currentSection.rows.push({
+      name: rowMatch[1].trim().replace(/\s+/g, ' ').toUpperCase(),
+      returns: normalizeParsedReturn(rowMatch[2], currentSection.name),
+      duration: normalizeDuration(rowMatch[3])
     });
   }
 
