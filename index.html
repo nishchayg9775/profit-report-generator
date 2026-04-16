@@ -67,9 +67,31 @@ NIFTY 50: 2.93% in 57 Mins</textarea>
 
                 <div class="parse-chips" id="parseChips"></div>
 
+                <div class="parse-stats" id="parseStats">
+                  <span class="parse-stat parse-stat-high">High: <strong id="statHigh">0</strong></span>
+                  <span class="parse-stat parse-stat-medium">Medium: <strong id="statMedium">0</strong></span>
+                  <span class="parse-stat parse-stat-low">Low: <strong id="statLow">0</strong></span>
+                </div>
+
                 <div class="parse-warning is-hidden" id="parseWarningBox">
                   <div class="parse-warning-title">Needs Attention</div>
                   <div class="parse-warning-list" id="parseWarningList"></div>
+                </div>
+
+                <div class="parse-review is-hidden" id="parseReviewBox">
+                  <div class="parse-review-head-row">
+                    <button type="button" class="parse-review-toggle" id="parseReviewToggle" aria-expanded="false">
+                      <span class="parse-warning-title">Auto Fix Suggestions</span>
+                      <span class="parse-review-toggle-meta">
+                        <span class="parse-review-count" id="parseReviewCount">0</span>
+                        <span class="parse-review-chevron" id="parseReviewChevron">+</span>
+                      </span>
+                    </button>
+                    <button type="button" class="btn btn-secondary btn-compact parse-review-apply-all" id="applyAllSuggestions">Apply All</button>
+                  </div>
+                  <div class="parse-review-panel is-hidden" id="parseReviewPanel">
+                    <div class="parse-review-list" id="parseReviewList"></div>
+                  </div>
                 </div>
 
                 <div class="parse-preview-head">
@@ -77,6 +99,26 @@ NIFTY 50: 2.93% in 57 Mins</textarea>
                   <button type="button" class="btn btn-secondary btn-compact" id="normalizeInput">Use Normalized Text</button>
                 </div>
                 <textarea id="normalizedPreview" rows="7" readonly placeholder="Normalized text preview will appear here."></textarea>
+
+                <div class="parse-ai">
+                  <div class="parse-preview-head parse-ai-head">
+                    <span>AI Assist Fallback</span>
+                    <button type="button" class="btn btn-secondary btn-compact" id="runAiAssist">Try AI Assist</button>
+                  </div>
+                  <div class="ai-grid">
+                    <label class="ai-toggle">
+                      <input type="checkbox" id="aiAssistEnabled">
+                      <span>Enable automatic AI fallback on low-confidence parses</span>
+                    </label>
+                    <input type="text" id="aiEndpoint" placeholder="AI endpoint URL">
+                    <input type="text" id="aiModel" placeholder="AI model name">
+                    <input type="password" id="aiApiKey" placeholder="API key stored only in this browser">
+                  </div>
+                  <div class="ai-actions">
+                    <button type="button" class="btn btn-secondary btn-compact" id="saveAiSettings">Save AI Settings</button>
+                    <span class="ai-status" id="aiStatus">AI assist is optional. Configure it only if you want remote normalization fallback.</span>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -297,6 +339,7 @@ NIFTY 50: 2.93% in 57 Mins</textarea>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="smart-parser.js"></script>
 <script src="script.js"></script>
 </body>
 </html>

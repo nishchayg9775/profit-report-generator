@@ -66,6 +66,8 @@ let bgDB = null;
 let bgLibrary = [];
 let bgActiveId = null;
 let lastParseModel = null;
+let aiAssistState = { pending: false, lastRequestedText: '' };
+let parseReviewExpanded = false;
 
 function bgBuildBundledUrl(fileName) {
   const encodedPath = fileName.split('/').map(encodeURIComponent).join('/');
@@ -557,16 +559,22 @@ function updateSmartParseUI(parseModel) {
   const detail = document.getElementById('parseMeta');
   const confidence = document.getElementById('parseConfidence');
   const chips = document.getElementById('parseChips');
+  const statHigh = document.getElementById('statHigh');
+  const statMedium = document.getElementById('statMedium');
+  const statLow = document.getElementById('statLow');
   const warningBox = document.getElementById('parseWarningBox');
   const warningList = document.getElementById('parseWarningList');
+  const reviewBox = document.getElementById('parseReviewBox');
+  const reviewPanel = document.getElementById('parseReviewPanel');
+  const reviewList = document.getElementById('parseReviewList');
   const preview = document.getElementById('normalizedPreview');
   const normalizeButton = document.getElementById('normalizeInput');
 
-  if (!summary || !detail || !confidence || !chips || !warningBox || !warningList || !preview) return;
+  if (!summary || !detail || !confidence || !chips || !warningBox || !warningList || !reviewBox || !reviewPanel || !reviewList || !preview) return;
 
   const hasInput = document.getElementById('inputText').value.trim().length > 0;
   const sectionCount = parseModel.sections.length;
-  const issueCount = parseModel.unmatchedLines.length;
+  const issueCount = parseModel.reviewItems?.length || parseModel.unmatchedLines.length;
 
   if (!hasInput) {
     summary.textContent = 'Paste trade text and smart parse will auto-detect the format';
@@ -574,10 +582,17 @@ function updateSmartParseUI(parseModel) {
     confidence.textContent = 'Waiting';
     confidence.dataset.state = 'idle';
     chips.innerHTML = '';
+    if (statHigh) statHigh.textContent = '0';
+    if (statMedium) statMedium.textContent = '0';
+    if (statLow) statLow.textContent = '0';
     preview.value = '';
     if (normalizeButton) normalizeButton.disabled = true;
     warningList.innerHTML = '';
     warningBox.classList.add('is-hidden');
+    parseReviewExpanded = false;
+    reviewList.innerHTML = '';
+    reviewBox.classList.add('is-hidden');
+    syncParseReviewUI(0);
     return;
   }
 
@@ -596,12 +611,15 @@ function updateSmartParseUI(parseModel) {
     detail.textContent = 'Input successfully normalized into the app format.';
   }
 
-  confidence.textContent = issueCount ? `${issueCount} to review` : `${Math.round(parseModel.confidence * 100)}% ready`;
+  confidence.textContent = issueCount ? `${issueCount} to review` : `${Math.round((parseModel.confidence || 0) * 100)}% ready`;
   confidence.dataset.state = issueCount ? 'warn' : parseModel.parsedRows ? 'good' : 'idle';
 
   chips.innerHTML = parseModel.sections
     .map(section => `<span class="parse-chip">${titleCaseLoose(section.name)} <strong>${section.rows.length}</strong></span>`)
     .join('');
+  if (statHigh) statHigh.textContent = String(parseModel.lineStats?.high || 0);
+  if (statMedium) statMedium.textContent = String(parseModel.lineStats?.medium || 0);
+  if (statLow) statLow.textContent = String(parseModel.lineStats?.low || 0);
 
   preview.value = parseModel.normalizedText;
   if (normalizeButton) normalizeButton.disabled = !parseModel.normalizedText;
@@ -609,7 +627,170 @@ function updateSmartParseUI(parseModel) {
     .slice(0, 6)
     .map(line => `<div class="parse-warning-item">${line}</div>`)
     .join('');
-  warningBox.classList.toggle('is-hidden', !issueCount);
+  warningBox.classList.toggle('is-hidden', !parseModel.unmatchedLines.length);
+
+  reviewList.innerHTML = (parseModel.reviewItems || [])
+    .map((item, index) => `
+      <div class="parse-review-item">
+        <div class="parse-review-line">${item.rawLine}</div>
+        <div class="parse-review-meta">${item.reason.replace(/-/g, ' ')} | ${item.confidenceLabel} confidence${item.sectionName ? ` | ${titleCaseLoose(item.sectionName)}` : ''}</div>
+        ${item.suggestion ? `<div class="parse-review-suggestion">Suggested: ${item.suggestion}</div>` : ''}
+        ${item.suggestion ? `<div class="parse-review-actions"><button type="button" class="btn btn-secondary btn-compact apply-suggestion-btn" data-review-index="${index}">Apply Suggestion</button></div>` : ''}
+      </div>
+    `)
+    .join('');
+  reviewBox.classList.toggle('is-hidden', !(parseModel.reviewItems || []).length);
+  if (!(parseModel.reviewItems || []).length) parseReviewExpanded = false;
+  syncParseReviewUI((parseModel.reviewItems || []).length);
+}
+
+function getParserApi() {
+  return window.smartParser || {
+    parseInputModel,
+    parseInput,
+    learnCorrections() {},
+    getAiConfig() {
+      return { enabled: false, endpoint: '', model: '', apiKey: '', autoRun: true };
+    },
+    setAiConfig(config) {
+      return config;
+    },
+    async tryAiFallback() {
+      return { status: 'disabled', reason: 'AI assist module is unavailable.' };
+    }
+  };
+}
+
+function setAiStatus(message) {
+  const status = document.getElementById('aiStatus');
+  if (status) status.textContent = message;
+}
+
+function syncParseReviewUI(reviewCount) {
+  const reviewBox = document.getElementById('parseReviewBox');
+  const reviewPanel = document.getElementById('parseReviewPanel');
+  const reviewToggle = document.getElementById('parseReviewToggle');
+  const reviewCountLabel = document.getElementById('parseReviewCount');
+  const applyAllButton = document.getElementById('applyAllSuggestions');
+
+  if (!reviewBox || !reviewPanel || !reviewToggle || !reviewCountLabel || !applyAllButton) return;
+
+  reviewCountLabel.textContent = `${reviewCount}`;
+  reviewBox.classList.toggle('is-expanded', parseReviewExpanded && reviewCount > 0);
+  reviewPanel.classList.toggle('is-hidden', !(parseReviewExpanded && reviewCount > 0));
+  reviewToggle.setAttribute('aria-expanded', parseReviewExpanded && reviewCount > 0 ? 'true' : 'false');
+  applyAllButton.disabled = !(lastParseModel?.reviewItems || []).some(item => item.suggestion);
+}
+
+function syncAiConfigUI() {
+  const parser = getParserApi();
+  const config = parser.getAiConfig ? parser.getAiConfig() : { enabled: false, endpoint: '', model: '', apiKey: '', autoRun: true };
+  const enabled = document.getElementById('aiAssistEnabled');
+  const endpoint = document.getElementById('aiEndpoint');
+  const model = document.getElementById('aiModel');
+  const apiKey = document.getElementById('aiApiKey');
+  const runButton = document.getElementById('runAiAssist');
+
+  if (enabled) enabled.checked = !!config.enabled;
+  if (endpoint) endpoint.value = config.endpoint || '';
+  if (model) model.value = config.model || '';
+  if (apiKey) apiKey.value = config.apiKey || '';
+  if (runButton) runButton.disabled = aiAssistState.pending || !config.enabled || !config.endpoint || !config.model || !config.apiKey;
+
+  if (!config.enabled) setAiStatus('AI assist is off. Deterministic parsing is still fully active.');
+  else if (!config.endpoint || !config.model || !config.apiKey) setAiStatus('AI assist enabled, but endpoint, model, or API key is still missing.');
+}
+
+function replaceInputLine(rawLine, nextLine) {
+  const input = document.getElementById('inputText');
+  const lines = input.value.split(/\r?\n/);
+  const index = lines.findIndex(line => line.trim() === rawLine.trim());
+  if (index !== -1) {
+    lines[index] = nextLine;
+    input.value = lines.join('\n');
+  }
+}
+
+function applyReviewSuggestion(index) {
+  const item = lastParseModel?.reviewItems?.[index];
+  if (!item?.suggestion) return;
+  const parser = getParserApi();
+  if (parser.learnCorrections) parser.learnCorrections([{ rawLine: item.rawLine, suggestion: item.suggestion }]);
+  replaceInputLine(item.rawLine, item.suggestion);
+  generate();
+}
+
+function applyAllReviewSuggestions() {
+  const suggestions = (lastParseModel?.reviewItems || []).filter(item => item.suggestion);
+  if (!suggestions.length) return;
+
+  const parser = getParserApi();
+  if (parser.learnCorrections) parser.learnCorrections(suggestions.map(item => ({ rawLine: item.rawLine, suggestion: item.suggestion })));
+
+  const input = document.getElementById('inputText');
+  const lines = input.value.split(/\r?\n/);
+  const suggestionQueues = new Map();
+
+  suggestions.forEach(item => {
+    const key = item.rawLine.trim();
+    if (!suggestionQueues.has(key)) suggestionQueues.set(key, []);
+    suggestionQueues.get(key).push(item.suggestion);
+  });
+
+  input.value = lines
+    .map(line => {
+      const key = line.trim();
+      const queue = suggestionQueues.get(key);
+      if (queue && queue.length) return queue.shift();
+      return line;
+    })
+    .join('\n');
+
+  generate();
+}
+
+async function requestAiAssist(manual = false) {
+  const parser = getParserApi();
+  const input = document.getElementById('inputText');
+  const text = input.value.trim();
+  if (!text || aiAssistState.pending) return;
+
+  const config = parser.getAiConfig ? parser.getAiConfig() : null;
+  if (!config?.enabled || !config.endpoint || !config.model || !config.apiKey) {
+    syncAiConfigUI();
+    return;
+  }
+
+  aiAssistState.pending = true;
+  aiAssistState.lastRequestedText = text;
+  syncAiConfigUI();
+  setAiStatus(manual ? 'AI assist is analyzing this input...' : 'Low-confidence parse detected. AI assist is trying a stronger normalization...');
+
+  const result = await parser.tryAiFallback(text, lastParseModel);
+  aiAssistState.pending = false;
+
+  if (result.status === 'success' && result.model?.normalizedText) {
+    input.value = result.model.normalizedText;
+    lastParseModel = result.model;
+    aiAssistState.lastRequestedText = result.model.normalizedText;
+    setAiStatus('AI assist applied a stronger normalized version of the input.');
+    generate();
+    return;
+  }
+
+  setAiStatus(result.reason || 'AI assist did not return a usable result.');
+  syncAiConfigUI();
+}
+
+function maybeAutoRunAiAssist(parseModel) {
+  const parser = getParserApi();
+  const config = parser.getAiConfig ? parser.getAiConfig() : null;
+  const input = document.getElementById('inputText');
+  const text = input.value.trim();
+  if (!config?.enabled || !config.autoRun || !text || aiAssistState.pending) return;
+  if (aiAssistState.lastRequestedText === text) return;
+  if ((parseModel.confidence || 0) >= 0.72 && !(parseModel.reviewItems || []).some(item => item.type === 'unmatched')) return;
+  requestAiAssist(false);
 }
 
 function getActiveTheme() {
@@ -1654,7 +1835,8 @@ function generate() {
 }
 
 function doGenerate() {
-  const parseModel = parseInputModel(document.getElementById('inputText').value);
+  const parser = getParserApi();
+  const parseModel = parser.parseInputModel(document.getElementById('inputText').value);
   const sections = parseModel.sections;
   const template = getSelectedTemplate();
   const theme = getActiveTheme();
@@ -1686,6 +1868,7 @@ function doGenerate() {
 
   lastParseModel = parseModel;
   updateSmartParseUI(parseModel);
+  syncAiConfigUI();
 
   card.className = `card template-${template} theme-${theme}`;
   card.style.width = `${width}px`;
@@ -1746,6 +1929,7 @@ function doGenerate() {
   else renderClassicSections(fragment, sections, sizes, tableSpacing, horizontalPad);
 
   container.appendChild(fragment);
+  maybeAutoRunAiAssist(parseModel);
 }
 
 function download() {
@@ -1849,6 +2033,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const savedFormatState = localStorage.getItem('globalFormat');
   if (savedFormatState) Object.assign(globalFormat, JSON.parse(savedFormatState));
   syncFormats();
+  syncAiConfigUI();
 
   bgOpenDB().then(async db => {
     bgDB = db;
@@ -2007,8 +2192,39 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('disclaimer').addEventListener('input', generate);
   document.getElementById('normalizeInput').addEventListener('click', () => {
     if (!lastParseModel || !lastParseModel.normalizedText) return;
+    const parser = getParserApi();
+    if (parser.learnCorrections) parser.learnCorrections((lastParseModel.reviewItems || []).filter(item => item.suggestion));
     document.getElementById('inputText').value = lastParseModel.normalizedText;
     generate();
+  });
+  document.getElementById('saveAiSettings').addEventListener('click', () => {
+    const parser = getParserApi();
+    parser.setAiConfig({
+      enabled: document.getElementById('aiAssistEnabled').checked,
+      endpoint: document.getElementById('aiEndpoint').value.trim(),
+      model: document.getElementById('aiModel').value.trim(),
+      apiKey: document.getElementById('aiApiKey').value.trim(),
+      autoRun: document.getElementById('aiAssistEnabled').checked
+    });
+    aiAssistState.lastRequestedText = '';
+    syncAiConfigUI();
+    setAiStatus('AI settings saved locally in this browser.');
+  });
+  document.getElementById('runAiAssist').addEventListener('click', () => {
+    requestAiAssist(true);
+  });
+  document.getElementById('parseReviewToggle').addEventListener('click', () => {
+    if (!lastParseModel?.reviewItems?.length) return;
+    parseReviewExpanded = !parseReviewExpanded;
+    syncParseReviewUI(lastParseModel.reviewItems.length);
+  });
+  document.getElementById('applyAllSuggestions').addEventListener('click', () => {
+    applyAllReviewSuggestions();
+  });
+  document.getElementById('parseReviewList').addEventListener('click', event => {
+    const button = event.target.closest('.apply-suggestion-btn');
+    if (!button) return;
+    applyReviewSuggestion(Number(button.getAttribute('data-review-index')));
   });
 
   document.querySelectorAll('.tab-btn').forEach(button => {
