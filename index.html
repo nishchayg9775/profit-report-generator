@@ -33,6 +33,8 @@
             </div>
           </div>
 
+          <p class="helper-text smart-parse-intro">Paste WhatsApp text, bullets, plain sections, or mixed trade notes. The app will auto-detect the structure and normalize it before rendering.</p>
+
           <textarea id="inputText" rows="18">Equity:
 OIL: 3.33% in 5 Days
 TATAINVEST: 2.02% in 1 Hour
@@ -52,6 +54,32 @@ CANBK: 4.39% in 22 Mins
 NIFTY 50: 2.93% in 57 Mins</textarea>
 
           <div class="controls controls-tight">
+            <div class="control-group full">
+              <label>Smart Parse</label>
+              <div class="parse-card">
+                <div class="parse-topline">
+                  <div>
+                    <div class="parse-summary" id="parseSummary">Paste trade text and smart parse will auto-detect the format</div>
+                    <div class="parse-meta" id="parseMeta">WhatsApp stars, plain sections, bullets, colons, hyphens, and futures amounts all get normalized here.</div>
+                  </div>
+                  <div class="parse-confidence" id="parseConfidence" data-state="idle">Waiting</div>
+                </div>
+
+                <div class="parse-chips" id="parseChips"></div>
+
+                <div class="parse-warning is-hidden" id="parseWarningBox">
+                  <div class="parse-warning-title">Needs Attention</div>
+                  <div class="parse-warning-list" id="parseWarningList"></div>
+                </div>
+
+                <div class="parse-preview-head">
+                  <span>Normalized Preview</span>
+                  <button type="button" class="btn btn-secondary btn-compact" id="normalizeInput">Use Normalized Text</button>
+                </div>
+                <textarea id="normalizedPreview" rows="7" readonly placeholder="Normalized text preview will appear here."></textarea>
+              </div>
+            </div>
+
             <div class="control-group full">
               <label>SEBI Registration</label>
               <input type="text" id="sebiReg" value="INH000013776">

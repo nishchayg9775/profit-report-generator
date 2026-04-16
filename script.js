@@ -65,6 +65,7 @@ let customLogoPos = 'top-left';
 let bgDB = null;
 let bgLibrary = [];
 let bgActiveId = null;
+let lastParseModel = null;
 
 function bgBuildBundledUrl(fileName) {
   const encodedPath = fileName.split('/').map(encodeURIComponent).join('/');
@@ -248,6 +249,367 @@ function parseInput(text) {
   }
 
   return sections.sort((a, b) => (SECTION_ORDER[a.name] ?? 99) - (SECTION_ORDER[b.name] ?? 99));
+}
+
+function cleanInputLine(rawLine) {
+  return String(rawLine || '')
+    .replace(/[\u200B-\u200D\u2060\uFEFF]/g, '')
+    .replace(/\u00A0/g, ' ')
+    .replace(/[•●▪◦‣]/g, '*')
+    .replace(/[‐‑‒–—]/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function normalizeSectionName(rawName) {
+  const name = rawName.replace(/[^A-Za-z]/g, '').trim().toUpperCase();
+  if (name === 'EQUITIES' || name === 'EQUITY') return 'EQUITY';
+  if (name === 'FUTURE' || name === 'FUTURES') return 'FUTURES';
+  if (name === 'OPTION' || name === 'OPTIONS') return 'OPTIONS';
+  if (name.startsWith('COMMOD')) return 'COMMODITY';
+  return name;
+}
+
+function titleCaseLoose(value) {
+  return value
+    .toLowerCase()
+    .replace(/\b([a-z])/g, match => match.toUpperCase())
+    .replace(/\bMins\b/g, 'Mins')
+    .replace(/\bMin\b/g, 'Min')
+    .replace(/\bHrs\b/g, 'Hrs')
+    .replace(/\bHr\b/g, 'Hr');
+}
+
+function normalizeDuration(duration) {
+  let normalized = duration.trim();
+  normalized = normalized.replace(/^(?:in|on)\s+/i, '');
+  normalized = normalized.replace(/^(?:the\s+)?same day$/i, 'Same Day');
+  normalized = normalized.replace(/^(?:just|only|the)\s+/i, '');
+  return titleCaseLoose(normalized)
+    .split(/\s+/)
+    .map(word => {
+      const lower = word.toLowerCase();
+      if (lower === 'minutes' || lower === 'minute' || lower === 'mins') return 'Mins';
+      if (lower === 'hours' || lower === 'hour' || lower === 'hrs') return lower === 'hrs' ? 'Hrs' : titleCaseLoose(lower);
+      return word;
+    })
+    .join(' ');
+}
+
+function normalizeTradeName(name) {
+  return name
+    .replace(/^[#*+\-.()\d\s]+/, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toUpperCase();
+}
+
+function isCurrencyReturn(value, sectionName) {
+  return /futures/i.test(sectionName) || /(?:₹|rs\.?|inr|\/-|\bper\s*lot\b)/i.test(value);
+}
+
+function normalizeParsedReturn(returns, sectionName) {
+  let normalized = returns.trim().replace(/\s+/g, ' ');
+
+  if (isCurrencyReturn(normalized, sectionName)) {
+    const sign = normalized.startsWith('-') ? '-' : '';
+    normalized = normalized
+      .replace(/^[-+]\s*/, '')
+      .replace(/₹/g, '')
+      .replace(/^rs\.?\s*/i, '')
+      .replace(/^inr\s*/i, '')
+      .replace(/\/-\s*/g, '')
+      .replace(/\bper\s*lot\b/ig, '')
+      .trim();
+
+    const numeric = normalized.replace(/,/g, '');
+    if (/^\d+(?:\.\d+)?$/.test(numeric)) {
+      const [whole, fraction] = numeric.split('.');
+      const formatted = Number(whole).toLocaleString('en-IN') + (fraction ? `.${fraction}` : '');
+      return `${sign}Rs. ${formatted}`;
+    }
+
+    return `${sign}Rs. ${normalized}`.trim();
+  }
+
+  normalized = normalized.replace(/\bpercent\b/ig, '%').trim();
+  if (!normalized.includes('%') && /^[-+]?\d+(?:\.\d+)?$/.test(normalized.replace(/,/g, ''))) return `${normalized}%`;
+  return normalized;
+}
+
+function detectSectionHeader(line) {
+  return line.match(/^(Equit(?:y|ies)|Futures?|Options?|Commodity)\s*(?:\(\s*(\d+)\s*\))?\s*:?\s*$/i);
+}
+
+function splitDurationSegment(line) {
+  const lower = line.toLowerCase();
+  const markers = [' in just ', ' in only ', ' in ', ' on '];
+  let splitIndex = -1;
+  let splitMarker = '';
+
+  markers.forEach(marker => {
+    const markerIndex = lower.lastIndexOf(marker);
+    if (markerIndex > splitIndex) {
+      splitIndex = markerIndex;
+      splitMarker = marker;
+    }
+  });
+
+  if (splitIndex === -1) return null;
+  return {
+    left: line.slice(0, splitIndex).trim(),
+    duration: line.slice(splitIndex + splitMarker.length).trim()
+  };
+}
+
+function splitNameAndReturn(line) {
+  const explicitMatch = line.match(/^(.+?)(?:\s*[:\-]\s*)(.+)$/);
+  if (explicitMatch) {
+    return {
+      name: explicitMatch[1].trim(),
+      returns: explicitMatch[2].trim()
+    };
+  }
+
+  const looseMatch = line.match(/^(.*?)([-+]?(?:Rs\.?|INR|₹)?\s*\d[\d,]*(?:\.\d+)?(?:\s*\/-\s*)?(?:\s*PER LOT)?|[-+]?\d+(?:\.\d+)?%)$/i);
+  if (looseMatch) {
+    return {
+      name: looseMatch[1].trim(),
+      returns: looseMatch[2].trim()
+    };
+  }
+
+  return null;
+}
+
+function parseRowLine(line, sectionName) {
+  const normalizedLine = line.replace(/^[*+\-]+\s*/, '').trim();
+  const durationParts = splitDurationSegment(normalizedLine);
+  if (!durationParts) return null;
+
+  const rowParts = splitNameAndReturn(durationParts.left);
+  if (!rowParts) return null;
+
+  const name = normalizeTradeName(rowParts.name);
+  if (!name) return null;
+
+  return {
+    name,
+    returns: normalizeParsedReturn(rowParts.returns, sectionName),
+    duration: normalizeDuration(durationParts.duration)
+  };
+}
+
+function isLikelyDateLabel(text) {
+  return /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\b/i.test(text) || /\b\d{1,2}(?:st|nd|rd|th)?\b/i.test(text);
+}
+
+function extractTitleMeta(line) {
+  const compact = line.replace(/^[*#\s]+|[*#\s]+$/g, '').trim();
+  if (!compact || !/(profit|trade|pick|booked|till now|today|report)/i.test(compact)) return null;
+
+  const parts = compact.split(/\s*[-|]\s*/).filter(Boolean);
+  let dateLabel = '';
+  let titleLine = compact;
+
+  if (parts.length > 1) {
+    const titleIndex = parts.findIndex(part => /(profit|trade|pick|booked|till now|today|report)/i.test(part));
+    if (titleIndex !== -1) {
+      titleLine = parts[titleIndex];
+      const prefix = parts.slice(0, titleIndex).join(' ').trim();
+      if (prefix && isLikelyDateLabel(prefix)) dateLabel = titleCaseLoose(prefix);
+    }
+  }
+
+  const totalMatch = titleLine.match(/(\d+)\s+(.*)$/);
+  return {
+    rawLine: compact,
+    dateLabel,
+    totalHint: totalMatch ? parseInt(totalMatch[1], 10) : null,
+    titleBody: titleCaseLoose((totalMatch ? totalMatch[2] : titleLine).trim())
+  };
+}
+
+function buildMetaFromPreamble(lines) {
+  const meta = {
+    dateLabel: '',
+    totalHint: null,
+    titleBody: '',
+    rawTitle: '',
+    extraLines: []
+  };
+
+  lines.forEach(line => {
+    const titleMeta = extractTitleMeta(line);
+    if (titleMeta && !meta.rawTitle) {
+      meta.dateLabel = titleMeta.dateLabel;
+      meta.totalHint = titleMeta.totalHint;
+      meta.titleBody = titleMeta.titleBody;
+      meta.rawTitle = titleMeta.rawLine;
+      return;
+    }
+    meta.extraLines.push(titleCaseLoose(line));
+  });
+
+  return meta;
+}
+
+function buildNormalizedText(meta, sections) {
+  const lines = [];
+
+  if (meta.rawTitle) {
+    const titleLine = meta.totalHint && meta.titleBody
+      ? `${meta.totalHint} ${meta.titleBody}`
+      : meta.rawTitle;
+    lines.push(meta.dateLabel ? `${meta.dateLabel} - ${titleLine}` : titleLine);
+    lines.push('');
+  }
+
+  sections.forEach(section => {
+    lines.push(`${titleCaseLoose(section.name)}:`);
+    section.rows.forEach(row => {
+      lines.push(`${row.name} - ${row.returns} in ${row.duration}`);
+    });
+    if (section.more) lines.push(section.more);
+    lines.push('');
+  });
+
+  return lines.join('\n').trim();
+}
+
+function parseInputModel(text) {
+  const sections = [];
+  const preambleLines = [];
+  const unmatchedLines = [];
+  let currentSection = null;
+
+  text.split('\n').forEach(rawLine => {
+    const line = cleanInputLine(rawLine);
+    if (!line) return;
+
+    const plainLine = line.replace(/\*/g, '').trim();
+    const sectionMatch = detectSectionHeader(plainLine);
+    if (sectionMatch) {
+      currentSection = {
+        name: normalizeSectionName(sectionMatch[1]),
+        rows: [],
+        expectedCount: sectionMatch[2] ? parseInt(sectionMatch[2], 10) : null
+      };
+      sections.push(currentSection);
+      return;
+    }
+
+    if (!currentSection) {
+      preambleLines.push(plainLine);
+      return;
+    }
+
+    const moreMatch = plainLine.match(/^[+&]\s*(\d+)\s+more/i);
+    if (moreMatch) {
+      currentSection.more = `+${moreMatch[1]} more`;
+      return;
+    }
+
+    const row = parseRowLine(plainLine, currentSection.name);
+    if (row) {
+      currentSection.rows.push(row);
+      return;
+    }
+
+    unmatchedLines.push(plainLine);
+  });
+
+  const sortedSections = sections.sort((a, b) => (SECTION_ORDER[a.name] ?? 99) - (SECTION_ORDER[b.name] ?? 99));
+  const parsedRows = sortedSections.reduce((sum, section) => sum + section.rows.length, 0);
+  const confidence = parsedRows ? Math.max(0.45, parsedRows / Math.max(parsedRows + unmatchedLines.length, 1)) : 0;
+  const meta = buildMetaFromPreamble(preambleLines);
+
+  return {
+    meta,
+    sections: sortedSections,
+    unmatchedLines,
+    parsedRows,
+    confidence,
+    normalizedText: buildNormalizedText(meta, sortedSections)
+  };
+}
+
+function parseInput(text) {
+  return parseInputModel(text).sections;
+}
+
+function getDisplayTitleParts(parseModel) {
+  const totalRows = parseModel.parsedRows || parseModel.meta.totalHint || 0;
+  const defaultBody = 'Profits Booked Today';
+  const titleBody = parseModel.meta.titleBody || defaultBody;
+  const words = titleBody.split(/\s+/).filter(Boolean);
+  const leadWord = words[0] && /(profit|trade|pick|gain|return)/i.test(words[0]) ? titleCaseLoose(words[0]) : 'Profits';
+  const trailingWords = words[0] && /(profit|trade|pick|gain|return)/i.test(words[0]) ? words.slice(1) : words;
+
+  return {
+    accent: `${totalRows} ${leadWord}`.trim(),
+    main: trailingWords.length ? titleCaseLoose(trailingWords.join(' ')) : 'Booked Today'
+  };
+}
+
+function updateSmartParseUI(parseModel) {
+  const summary = document.getElementById('parseSummary');
+  const detail = document.getElementById('parseMeta');
+  const confidence = document.getElementById('parseConfidence');
+  const chips = document.getElementById('parseChips');
+  const warningBox = document.getElementById('parseWarningBox');
+  const warningList = document.getElementById('parseWarningList');
+  const preview = document.getElementById('normalizedPreview');
+  const normalizeButton = document.getElementById('normalizeInput');
+
+  if (!summary || !detail || !confidence || !chips || !warningBox || !warningList || !preview) return;
+
+  const hasInput = document.getElementById('inputText').value.trim().length > 0;
+  const sectionCount = parseModel.sections.length;
+  const issueCount = parseModel.unmatchedLines.length;
+
+  if (!hasInput) {
+    summary.textContent = 'Paste trade text and smart parse will auto-detect the format';
+    detail.textContent = 'WhatsApp stars, plain sections, bullets, colons, hyphens, and futures amounts all get normalized here.';
+    confidence.textContent = 'Waiting';
+    confidence.dataset.state = 'idle';
+    chips.innerHTML = '';
+    preview.value = '';
+    if (normalizeButton) normalizeButton.disabled = true;
+    warningList.innerHTML = '';
+    warningBox.classList.add('is-hidden');
+    return;
+  }
+
+  summary.textContent = parseModel.parsedRows
+    ? `${parseModel.parsedRows} trade rows detected across ${sectionCount} section${sectionCount === 1 ? '' : 's'}`
+    : 'No trade rows detected yet';
+
+  if (parseModel.meta.rawTitle || parseModel.meta.dateLabel) {
+    const titleLine = parseModel.meta.titleBody ? `${parseModel.parsedRows || parseModel.meta.totalHint || ''} ${parseModel.meta.titleBody}`.trim() : parseModel.meta.rawTitle;
+    detail.textContent = parseModel.meta.dateLabel
+      ? `Detected heading: ${titleLine} | Date: ${parseModel.meta.dateLabel}`
+      : `Detected heading: ${titleLine}`;
+  } else if (issueCount) {
+    detail.textContent = `${issueCount} line${issueCount === 1 ? '' : 's'} could not be mapped cleanly. Review them below.`;
+  } else {
+    detail.textContent = 'Input successfully normalized into the app format.';
+  }
+
+  confidence.textContent = issueCount ? `${issueCount} to review` : `${Math.round(parseModel.confidence * 100)}% ready`;
+  confidence.dataset.state = issueCount ? 'warn' : parseModel.parsedRows ? 'good' : 'idle';
+
+  chips.innerHTML = parseModel.sections
+    .map(section => `<span class="parse-chip">${titleCaseLoose(section.name)} <strong>${section.rows.length}</strong></span>`)
+    .join('');
+
+  preview.value = parseModel.normalizedText;
+  if (normalizeButton) normalizeButton.disabled = !parseModel.normalizedText;
+  warningList.innerHTML = parseModel.unmatchedLines
+    .slice(0, 6)
+    .map(line => `<div class="parse-warning-item">${line}</div>`)
+    .join('');
+  warningBox.classList.toggle('is-hidden', !issueCount);
 }
 
 function getActiveTheme() {
@@ -1292,7 +1654,8 @@ function generate() {
 }
 
 function doGenerate() {
-  const sections = parseInput(document.getElementById('inputText').value);
+  const parseModel = parseInputModel(document.getElementById('inputText').value);
+  const sections = parseModel.sections;
   const template = getSelectedTemplate();
   const theme = getActiveTheme();
   const width = parseInt(document.getElementById('cardWidth').value, 10);
@@ -1300,7 +1663,7 @@ function doGenerate() {
   const headingScale = parseInt(document.getElementById('headingScale').value, 10) / 100;
   const tableSpacing = parseInt(document.getElementById('tableSpacing').value, 10) / 100;
   const format = document.getElementById('cardFormat').value;
-  const totalRows = sections.reduce((sum, section) => sum + section.rows.length + (section.more ? parseInt(section.more, 10) : 0), 0);
+  const totalRows = parseModel.parsedRows;
   const naturalHeight = estimateNaturalHeight(template, sections, width, headingScale, tableSpacing);
   const borderWeight = document.getElementById('tableBorder').value;
   let formatMaxHeight = width * 1.25;
@@ -1319,6 +1682,10 @@ function doGenerate() {
   const disclaimerBlock = document.getElementById('disclaimerDisplay');
   const container = document.getElementById('tablesContainer');
   const fragment = document.createDocumentFragment();
+  const titleParts = getDisplayTitleParts(parseModel);
+
+  lastParseModel = parseModel;
+  updateSmartParseUI(parseModel);
 
   card.className = `card template-${template} theme-${theme}`;
   card.style.width = `${width}px`;
@@ -1347,7 +1714,7 @@ function doGenerate() {
   makeEditable(sebiLine);
 
   titleBlock.style.marginBottom = `${sizes.titleMb}px`;
-  titleBlock.innerHTML = `<span class="t-green" style="font-size:${sizes.titleFz}px">${totalRows} Profits </span><span class="t-white" style="font-size:${sizes.titleFz}px">Booked Today</span>`;
+  titleBlock.innerHTML = `<span class="t-green" style="font-size:${sizes.titleFz}px">${titleParts.accent} </span><span class="t-white" style="font-size:${sizes.titleFz}px">${titleParts.main}</span>`;
   makeEditable(titleBlock);
 
   disclaimerBlock.textContent = document.getElementById('disclaimer').value;
@@ -1566,6 +1933,7 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('tableBorder').addEventListener('input', function () {
     document.getElementById('tableBorderVal').textContent = `${this.value}px`;
     document.getElementById('card').style.setProperty('--table-bw', `${this.value}px`);
+    generate();
   });
 
   document.getElementById('cardFormat').addEventListener('change', generate);
@@ -1637,6 +2005,11 @@ window.addEventListener('DOMContentLoaded', () => {
   ['fontFamily', 'sebiReg'].forEach(id => document.getElementById(id).addEventListener('change', generate));
   document.getElementById('inputText').addEventListener('input', generate);
   document.getElementById('disclaimer').addEventListener('input', generate);
+  document.getElementById('normalizeInput').addEventListener('click', () => {
+    if (!lastParseModel || !lastParseModel.normalizedText) return;
+    document.getElementById('inputText').value = lastParseModel.normalizedText;
+    generate();
+  });
 
   document.querySelectorAll('.tab-btn').forEach(button => {
     button.addEventListener('click', () => {
