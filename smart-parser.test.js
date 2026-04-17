@@ -8,7 +8,7 @@ function makeParser(extra = {}) {
   });
 }
 
-async function run() {
+function run() {
   {
     const parser = makeParser();
     const model = parser.parseInputModel(`*16TH APRIL - 11 PROFITS TILL NOW*
@@ -113,41 +113,6 @@ weird unsupported line`);
   }
 
   {
-    const fetchImpl = async () => ({
-      ok: true,
-      async json() {
-        return {
-          choices: [
-            {
-              message: {
-                content: JSON.stringify({
-                  meta: { titleBody: 'Profits Booked Today', totalHint: 2, reportMode: 'today' },
-                  sections: [
-                    { name: 'Equity', rows: [{ name: 'RELIANCE', returns: '2.4%', duration: '3 days' }] },
-                    { name: 'Futures', rows: [{ name: 'NATIONALUM', returns: '15750', duration: '1 day' }] }
-                  ]
-                })
-              }
-            }
-          ]
-        };
-      }
-    });
-    const parser = makeParser({ fetchImpl });
-    parser.setAiConfig({
-      enabled: true,
-      endpoint: 'https://example.com/v1/chat/completions',
-      model: 'test-model',
-      apiKey: 'secret',
-      autoRun: true
-    });
-    const result = await parser.tryAiFallback('messy text', parser.parseInputModel('bad line'));
-    assert.equal(result.status, 'success');
-    assert.equal(result.model.parsedRows, 2);
-    assert.equal(result.model.sections[1].name, 'FUTURES');
-  }
-
-  {
     const parser = makeParser();
     const model = parser.parseInputModel(`Equity:
 INFY - 2.1% in 2 days
@@ -162,7 +127,9 @@ NIFTY CE - 10.4% in 25 mins`);
   console.log('smart-parser tests passed');
 }
 
-run().catch(error => {
+try {
+  run();
+} catch (error) {
   console.error(error);
   process.exit(1);
-});
+}

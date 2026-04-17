@@ -2,20 +2,11 @@
   const api = factory(root || globalThis);
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (root) root.smartParser = api.createSmartParser({
-    storage: root.localStorage || null,
-    fetchImpl: typeof root.fetch === 'function' ? root.fetch.bind(root) : null
+    storage: root.localStorage || null
   });
 })(typeof window !== 'undefined' ? window : globalThis, function (root) {
   const SECTION_ORDER = { EQUITY: 0, OPTIONS: 1, FUTURES: 2, COMMODITY: 3 };
   const LEARNING_STORAGE_KEY = 'smart_parser_learning_v1';
-  const AI_STORAGE_KEY = 'smart_parser_ai_v1';
-  const DEFAULT_AI_CONFIG = {
-    enabled: false,
-    endpoint: 'https://api.openai.com/v1/chat/completions',
-    model: 'gpt-4.1-mini',
-    apiKey: '',
-    autoRun: true
-  };
 
   const DEFAULT_SECTION_ALIASES = {
     EQUITY: 'EQUITY',
@@ -488,106 +479,8 @@
     }, { high: 0, medium: 0, low: 0 });
   }
 
-  function extractResponseText(payload) {
-    if (!payload) return '';
-    if (typeof payload.output_text === 'string') return payload.output_text;
-    if (Array.isArray(payload.choices) && payload.choices[0]?.message?.content) return payload.choices[0].message.content;
-    if (Array.isArray(payload.output)) {
-      return payload.output
-        .flatMap(item => item.content || [])
-        .map(item => item.text || '')
-        .join('\n');
-    }
-    return '';
-  }
-
-  function extractJsonBlock(text) {
-    const trimmed = normalizeWhitespace(text);
-    if (!trimmed) return null;
-    try {
-      return JSON.parse(trimmed);
-    } catch (_error) {
-      const fence = trimmed.match(/```json\s*([\s\S]+?)```/i);
-      if (fence) {
-        try {
-          return JSON.parse(fence[1].trim());
-        } catch (_err) {}
-      }
-      const start = trimmed.indexOf('{');
-      const end = trimmed.lastIndexOf('}');
-      if (start !== -1 && end !== -1 && end > start) {
-        try {
-          return JSON.parse(trimmed.slice(start, end + 1));
-        } catch (_err) {}
-      }
-    }
-    return null;
-  }
-
-  function sanitizeAiRow(row, fallbackSection) {
-    const sectionName = row.section || fallbackSection;
-    return {
-      name: normalizeTradeName(row.name || ''),
-      returns: normalizeParsedReturn(row.returns || row.return || 'Review', sectionName),
-      duration: normalizeDuration(row.duration || 'Review'),
-      confidenceScore: 0.88,
-      confidenceLabel: 'high',
-      inferredSection: true,
-      parseReason: 'ai-fallback'
-    };
-  }
-
-  function modelFromAiJson(json) {
-    if (!json || !Array.isArray(json.sections)) return null;
-    const sections = json.sections
-      .map(section => ({
-        name: resolveSectionAlias(section.name || section.section || '', { sectionAliases: {}, exactCorrections: {} }) || 'EQUITY',
-        rows: Array.isArray(section.rows) ? section.rows.map(row => sanitizeAiRow(row, section.name || section.section || 'EQUITY')).filter(row => row.name) : []
-      }))
-      .filter(section => section.rows.length);
-
-    if (!sections.length) return null;
-
-    const meta = {
-      dateLabel: titleCaseLoose(json.meta?.dateLabel || json.meta?.date || ''),
-      totalHint: Number.isFinite(json.meta?.totalHint) ? json.meta.totalHint : null,
-      titleBody: titleCaseLoose(json.meta?.titleBody || json.meta?.title || ''),
-      rawTitle: titleCaseLoose(json.meta?.rawTitle || json.meta?.title || ''),
-      reportMode: json.meta?.reportMode || 'daily',
-      extraLines: []
-    };
-
-    const sortedSections = sections.sort((a, b) => (SECTION_ORDER[a.name] ?? 99) - (SECTION_ORDER[b.name] ?? 99));
-    const parsedRows = sortedSections.reduce((sum, section) => sum + section.rows.length, 0);
-    const normalizedText = buildNormalizedText(meta, sortedSections);
-    const lineAnalyses = sortedSections.flatMap(section => section.rows.map(row => ({
-      rawLine: `${row.name} - ${row.returns} in ${row.duration}`,
-      normalizedLine: `${row.name} - ${row.returns} in ${row.duration}`,
-      kind: 'row',
-      confidenceScore: row.confidenceScore,
-      confidenceLabel: row.confidenceLabel,
-      sectionName: section.name,
-      reason: 'ai-fallback'
-    })));
-
-    return {
-      meta,
-      sections: sortedSections,
-      unmatchedLines: [],
-      reviewItems: [],
-      lineAnalyses,
-      lineStats: buildLineStats(lineAnalyses),
-      parsedRows,
-      confidence: 0.9,
-      confidenceLabel: 'high',
-      normalizedText,
-      source: 'ai'
-    };
-  }
-
   function createSmartParser(options = {}) {
     const storage = options.storage || createMemoryStorage();
-    const fetchImpl = options.fetchImpl || null;
 
     function loadLearning() {
       return safeJsonParse(storage.getItem(LEARNING_STORAGE_KEY), {
@@ -598,16 +491,6 @@
 
     function saveLearning(state) {
       storage.setItem(LEARNING_STORAGE_KEY, JSON.stringify(state));
-    }
-
-    function getAiConfig() {
-      return { ...DEFAULT_AI_CONFIG, ...safeJsonParse(storage.getItem(AI_STORAGE_KEY), {}) };
-    }
-
-    function setAiConfig(nextConfig) {
-      const merged = { ...DEFAULT_AI_CONFIG, ...nextConfig };
-      storage.setItem(AI_STORAGE_KEY, JSON.stringify(merged));
-      return merged;
     }
 
     function learnCorrection(rawLine, correctedLine) {
@@ -801,7 +684,8 @@
         .sort((a, b) => (SECTION_ORDER[a.name] ?? 99) - (SECTION_ORDER[b.name] ?? 99));
 
       const meta = buildMetaFromPreamble(preambleLines);
-      const parsedRows = sections.reduce((sum, section) => sum + section.rows.length, 0);
+      const moreRows = sections.reduce((sum, section) => sum + (section.more ? parseInt(section.more, 10) || 0 : 0), 0);
+      const parsedRows = sections.reduce((sum, section) => sum + section.rows.length, 0) + moreRows;
       const dataAnalyses = lineAnalyses.filter(item => !['title', 'meta', 'header'].includes(item.kind));
       const confidence = dataAnalyses.length
         ? dataAnalyses.reduce((sum, item) => sum + item.confidenceScore, 0) / dataAnalyses.length
@@ -823,88 +707,6 @@
       };
     }
 
-    async function tryAiFallback(text, currentModel) {
-      const config = getAiConfig();
-      if (!config.enabled || !config.endpoint || !config.model || !config.apiKey) {
-        return { status: 'disabled', reason: 'AI assist is not configured yet.' };
-      }
-
-      if (!fetchImpl) {
-        return { status: 'disabled', reason: 'No fetch implementation available in this environment.' };
-      }
-
-      const payload = {
-        model: config.model,
-        response_format: { type: 'json_object' },
-        messages: [
-          {
-            role: 'system',
-            content: 'You normalize messy trading report text into strict JSON. Return only valid JSON with shape {"meta":{"dateLabel":"","totalHint":0,"titleBody":"","reportMode":"daily"},"sections":[{"name":"EQUITY","rows":[{"name":"","returns":"","duration":""}]}]}. Use only EQUITY, OPTIONS, FUTURES, COMMODITY section names.'
-          },
-          {
-            role: 'user',
-            content: text
-          }
-        ]
-      };
-
-      try {
-        const response = await fetchImpl(config.endpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${config.apiKey}`
-          },
-          body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) {
-          let detail = '';
-          try {
-            detail = extractResponseText(await response.json()) || '';
-          } catch (jsonError) {
-            try {
-              detail = await response.text();
-            } catch (textError) {
-              detail = '';
-            }
-          }
-
-          if (response.status === 404 && /127\.0\.0\.1|localhost/i.test(config.endpoint)) {
-            return { status: 'error', reason: `Local AI server responded with 404. Start Ollama and confirm the OpenAI-compatible endpoint is available at ${config.endpoint}.` };
-          }
-
-          if (response.status === 400 && /model/i.test(detail) && /not found|pull|unknown/i.test(detail)) {
-            return { status: 'error', reason: `Model ${config.model} is not available yet. Run \`ollama pull ${config.model}\` and try again.` };
-          }
-
-          return { status: 'error', reason: detail ? `AI request failed with ${response.status}: ${detail}` : `AI request failed with ${response.status}.` };
-        }
-
-        const json = await response.json();
-        const parsedJson = extractJsonBlock(extractResponseText(json));
-        const aiModel = modelFromAiJson(parsedJson);
-        if (!aiModel) {
-          return { status: 'error', reason: 'AI response could not be validated.' };
-        }
-
-        if (currentModel && aiModel.parsedRows < currentModel.parsedRows) {
-          return { status: 'ignored', reason: 'AI result was weaker than deterministic parsing.' };
-        }
-
-        return { status: 'success', model: aiModel };
-      } catch (error) {
-        const message = error?.message || 'AI request failed.';
-        if (/Failed to fetch|NetworkError|fetch/i.test(message) && /127\.0\.0\.1|localhost/i.test(config.endpoint)) {
-          return {
-            status: 'error',
-            reason: `Could not reach local AI server at ${config.endpoint}. Install/start Ollama, run \`ollama pull ${config.model}\`, then keep Ollama running.`
-          };
-        }
-        return { status: 'error', reason: message };
-      }
-    }
-
     return {
       parseInputModel,
       parseInput(text) {
@@ -915,16 +717,12 @@
       getLearning: loadLearning,
       clearLearning() {
         saveLearning({ exactCorrections: {}, sectionAliases: {} });
-      },
-      getAiConfig,
-      setAiConfig,
-      tryAiFallback
+      }
     };
   }
 
   return {
     createSmartParser,
-    DEFAULT_AI_CONFIG,
     createMemoryStorage
   };
 });

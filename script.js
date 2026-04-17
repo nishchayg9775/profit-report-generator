@@ -6,6 +6,7 @@ const COL_HEADERS = {
 };
 
 const SECTION_ORDER = { EQUITY: 0, OPTIONS: 1, FUTURES: 2, COMMODITY: 3 };
+const ACTIVE_TEMPLATES = ['classic', 'spotlight', 'ledger', 'board', 'ribbon', 'glass', 'pillars', 'mono'];
 const THEME_DEFAULTS = {
   dark: { primary: '#4aeabc', secondary: '#ffffff', tertiary: '#d4c97a' },
   light: { primary: '#2d7df3', secondary: '#161b1e', tertiary: '#8ea0b6' }
@@ -39,10 +40,6 @@ const TITLE_PALETTES = {
     dark: { accent: '#83f4ff', main: '#f4fbff', accentShadow: '0 0 24px rgba(131,244,255,.16)', mainShadow: '0 10px 24px rgba(0,0,0,.14)' },
     light: { accent: '#0eb5d3', main: '#163042', accentShadow: '0 10px 22px rgba(14,181,211,.14)', mainShadow: 'none' }
   },
-  editorial: {
-    dark: { accent: '#ffbf4d', main: '#fff4de', accentShadow: '0 0 24px rgba(255,191,77,.14)', mainShadow: '0 10px 24px rgba(0,0,0,.14)' },
-    light: { accent: '#d68000', main: '#1e1a16', accentShadow: '0 10px 20px rgba(214,128,0,.14)', mainShadow: 'none' }
-  },
   pillars: {
     dark: { accent: '#ffb347', main: '#f4f6ff', accentShadow: '0 0 24px rgba(255,179,71,.16)', mainShadow: '0 10px 26px rgba(123,77,255,.12)' },
     light: { accent: '#7c4dff', main: '#1a1f2c', accentShadow: '0 10px 22px rgba(124,77,255,.14)', mainShadow: 'none' }
@@ -50,7 +47,11 @@ const TITLE_PALETTES = {
   mono: {
     dark: { accent: '#9ef9ea', main: '#f1f5ff', accentShadow: '0 0 22px rgba(158,249,234,.16)', mainShadow: '0 10px 24px rgba(0,0,0,.16)' },
     light: { accent: '#0f79ff', main: '#101726', accentShadow: '0 10px 22px rgba(15,121,255,.12)', mainShadow: 'none' }
-  }
+  },
+  board: {
+    dark: { accent: '#ffd34d', main: '#fffdf4', accentShadow: '0 0 24px rgba(255,211,77,.22)', mainShadow: '0 10px 24px rgba(0,0,0,.18)' },
+    light: { accent: '#166c39', main: '#173123', accentShadow: '0 10px 22px rgba(22,108,57,.14)', mainShadow: 'none' }
+  },
 };
 const SECTION_ACCENTS = [
   { a: '#63e6ff', b: '#5b5bf6', soft: 'rgba(99,230,255,.22)', strong: 'rgba(91,91,246,.18)', border: 'rgba(99,230,255,.28)' },
@@ -66,22 +67,7 @@ let bgDB = null;
 let bgLibrary = [];
 let bgActiveId = null;
 let lastParseModel = null;
-let aiAssistState = { pending: false, lastRequestedText: '' };
 let parseReviewExpanded = false;
-const AI_QUICK_PRESETS = [
-  {
-    endpoint: 'http://127.0.0.1:11434/v1/chat/completions',
-    model: 'qwen3:8b',
-    apiKey: 'ollama',
-    note: 'Recommended local setup. Run `ollama pull qwen3:8b` once, then keep Ollama running.'
-  },
-  {
-    endpoint: 'http://127.0.0.1:11434/v1/chat/completions',
-    model: 'qwen3:4b',
-    apiKey: 'ollama',
-    note: 'Lighter local setup. Run `ollama pull qwen3:4b` if you want lower RAM usage.'
-  }
-];
 
 function bgBuildBundledUrl(fileName) {
   const encodedPath = fileName.split('/').map(encodeURIComponent).join('/');
@@ -536,7 +522,8 @@ function parseInputModel(text) {
   });
 
   const sortedSections = sections.sort((a, b) => (SECTION_ORDER[a.name] ?? 99) - (SECTION_ORDER[b.name] ?? 99));
-  const parsedRows = sortedSections.reduce((sum, section) => sum + section.rows.length, 0);
+  const moreRows = sortedSections.reduce((sum, section) => sum + (section.more ? parseInt(section.more, 10) || 0 : 0), 0);
+  const parsedRows = sortedSections.reduce((sum, section) => sum + section.rows.length, 0) + moreRows;
   const confidence = parsedRows ? Math.max(0.45, parsedRows / Math.max(parsedRows + unmatchedLines.length, 1)) : 0;
   const meta = buildMetaFromPreamble(preambleLines);
 
@@ -563,7 +550,8 @@ function getDisplayTitleParts(parseModel) {
   const trailingWords = words[0] && /(profit|trade|pick|gain|return)/i.test(words[0]) ? words.slice(1) : words;
 
   return {
-    accent: `${totalRows} ${leadWord}`.trim(),
+    count: totalRows ? String(totalRows) : '',
+    leadWord,
     main: trailingWords.length ? titleCaseLoose(trailingWords.join(' ')) : 'Booked Today'
   };
 }
@@ -658,26 +646,26 @@ function updateSmartParseUI(parseModel) {
   syncParseReviewUI((parseModel.reviewItems || []).length);
 }
 
+function syncPreviewAreaLayout() {
+  const previewArea = document.querySelector('.preview-area');
+  const card = document.getElementById('card');
+  if (!previewArea || !card) return;
+
+  const availableHeight = Math.max(0, previewArea.clientHeight - 44);
+  const cardHeight = card.getBoundingClientRect().height;
+  const isTall = cardHeight > availableHeight;
+
+  previewArea.classList.toggle('preview-is-tall', isTall);
+  previewArea.classList.toggle('preview-is-short', !isTall);
+  if (isTall) previewArea.scrollTop = 0;
+}
+
 function getParserApi() {
   return window.smartParser || {
     parseInputModel,
     parseInput,
     learnCorrections() {},
-    getAiConfig() {
-      return { enabled: false, endpoint: '', model: '', apiKey: '', autoRun: true };
-    },
-    setAiConfig(config) {
-      return config;
-    },
-    async tryAiFallback() {
-      return { status: 'disabled', reason: 'AI assist module is unavailable.' };
-    }
   };
-}
-
-function setAiStatus(message) {
-  const status = document.getElementById('aiStatus');
-  if (status) status.textContent = message;
 }
 
 function syncParseReviewUI(reviewCount) {
@@ -694,49 +682,6 @@ function syncParseReviewUI(reviewCount) {
   reviewPanel.classList.toggle('is-hidden', !(parseReviewExpanded && reviewCount > 0));
   reviewToggle.setAttribute('aria-expanded', parseReviewExpanded && reviewCount > 0 ? 'true' : 'false');
   applyAllButton.disabled = !(lastParseModel?.reviewItems || []).some(item => item.suggestion);
-}
-
-function syncAiConfigUI() {
-  const parser = getParserApi();
-  const config = parser.getAiConfig ? parser.getAiConfig() : { enabled: false, endpoint: '', model: '', apiKey: '', autoRun: true };
-  const enabled = document.getElementById('aiAssistEnabled');
-  const endpoint = document.getElementById('aiEndpoint');
-  const model = document.getElementById('aiModel');
-  const apiKey = document.getElementById('aiApiKey');
-  const runButton = document.getElementById('runAiAssist');
-  const quickNote = document.getElementById('aiQuickNote');
-  const quickButtons = document.querySelectorAll('.ai-quick-btn');
-
-  if (enabled) enabled.checked = !!config.enabled;
-  if (endpoint) endpoint.value = config.endpoint || '';
-  if (model) model.value = config.model || '';
-  if (apiKey) apiKey.value = config.apiKey || '';
-  if (runButton) runButton.disabled = aiAssistState.pending || !config.enabled || !config.endpoint || !config.model || !config.apiKey;
-  quickButtons.forEach(button => {
-    const isActive = button.dataset.aiEndpoint === (config.endpoint || '') && button.dataset.aiModel === (config.model || '');
-    button.classList.toggle('active', isActive);
-  });
-
-  const matchedPreset = AI_QUICK_PRESETS.find(preset => preset.endpoint === (config.endpoint || '') && preset.model === (config.model || ''));
-  if (quickNote && matchedPreset) quickNote.innerHTML = `${matchedPreset.note} API key stays local in this browser.`;
-  else if (quickNote) quickNote.innerHTML = 'Recommended free local setup. Run <code>ollama pull qwen3:8b</code> once, then keep Ollama running.';
-
-  if (!config.enabled) setAiStatus('AI assist is off. Deterministic parsing is still fully active.');
-  else if (!config.endpoint || !config.model || !config.apiKey) setAiStatus('AI assist enabled, but endpoint, model, or API key is still missing.');
-}
-
-function applyAiQuickPreset(endpoint, model, apiKey) {
-  const parser = getParserApi();
-  parser.setAiConfig({
-    enabled: true,
-    endpoint,
-    model,
-    apiKey,
-    autoRun: true
-  });
-  aiAssistState.lastRequestedText = '';
-  syncAiConfigUI();
-  setAiStatus(`Local AI preset saved. If needed, run \`ollama pull ${model}\` before using AI assist.`);
 }
 
 function replaceInputLine(rawLine, nextLine) {
@@ -787,50 +732,6 @@ function applyAllReviewSuggestions() {
   generate();
 }
 
-async function requestAiAssist(manual = false) {
-  const parser = getParserApi();
-  const input = document.getElementById('inputText');
-  const text = input.value.trim();
-  if (!text || aiAssistState.pending) return;
-
-  const config = parser.getAiConfig ? parser.getAiConfig() : null;
-  if (!config?.enabled || !config.endpoint || !config.model || !config.apiKey) {
-    syncAiConfigUI();
-    return;
-  }
-
-  aiAssistState.pending = true;
-  aiAssistState.lastRequestedText = text;
-  syncAiConfigUI();
-  setAiStatus(manual ? 'AI assist is analyzing this input...' : 'Low-confidence parse detected. AI assist is trying a stronger normalization...');
-
-  const result = await parser.tryAiFallback(text, lastParseModel);
-  aiAssistState.pending = false;
-
-  if (result.status === 'success' && result.model?.normalizedText) {
-    input.value = result.model.normalizedText;
-    lastParseModel = result.model;
-    aiAssistState.lastRequestedText = result.model.normalizedText;
-    setAiStatus('AI assist applied a stronger normalized version of the input.');
-    generate();
-    return;
-  }
-
-  setAiStatus(result.reason || 'AI assist did not return a usable result.');
-  syncAiConfigUI();
-}
-
-function maybeAutoRunAiAssist(parseModel) {
-  const parser = getParserApi();
-  const config = parser.getAiConfig ? parser.getAiConfig() : null;
-  const input = document.getElementById('inputText');
-  const text = input.value.trim();
-  if (!config?.enabled || !config.autoRun || !text || aiAssistState.pending) return;
-  if (aiAssistState.lastRequestedText === text) return;
-  if ((parseModel.confidence || 0) >= 0.72 && !(parseModel.reviewItems || []).some(item => item.type === 'unmatched')) return;
-  requestAiAssist(false);
-}
-
 function getActiveTheme() {
   const active = document.querySelector('.theme-btn.active');
   return active ? active.getAttribute('data-theme') : 'dark';
@@ -838,7 +739,8 @@ function getActiveTheme() {
 
 function getSelectedTemplate() {
   const active = document.querySelector('.preset-btn.active');
-  return active ? active.getAttribute('data-template') : 'classic';
+  const template = active ? active.getAttribute('data-template') : 'classic';
+  return ACTIVE_TEMPLATES.includes(template) ? template : 'classic';
 }
 
 function getSectionAccent(index) {
@@ -941,10 +843,6 @@ function getDefaultCardBackground(theme, template) {
       dark: 'radial-gradient(circle at 18% 12%, rgba(99,230,255,.18), transparent 28%), radial-gradient(circle at 82% 82%, rgba(74,234,188,.16), transparent 26%), linear-gradient(165deg, #0f1824 0%, #16263a 50%, #101924 100%)',
       light: 'radial-gradient(circle at 18% 12%, rgba(99,230,255,.1), transparent 28%), radial-gradient(circle at 82% 82%, rgba(74,234,188,.1), transparent 26%), linear-gradient(165deg, #fbfdff 0%, #eef7ff 52%, #f9fbff 100%)'
     },
-    editorial: {
-      dark: 'radial-gradient(circle at 18% 16%, rgba(255,179,71,.2), transparent 22%), linear-gradient(155deg, #0d1118 0%, #1c2331 52%, #10151d 100%)',
-      light: 'radial-gradient(circle at 18% 16%, rgba(255,179,71,.12), transparent 22%), linear-gradient(155deg, #fffdf8 0%, #f4f4f0 52%, #eef5ff 100%)'
-    },
     pillars: {
       dark: 'radial-gradient(circle at 50% 0%, rgba(255,255,255,.08), transparent 26%), linear-gradient(180deg, #1a1530 0%, #12192b 100%)',
       light: 'radial-gradient(circle at 50% 0%, rgba(255,255,255,.5), transparent 26%), linear-gradient(180deg, #fffaf5 0%, #eef2f8 100%)'
@@ -956,7 +854,11 @@ function getDefaultCardBackground(theme, template) {
     mono: {
       dark: 'linear-gradient(160deg, #10141c 0%, #1a202a 100%)',
       light: 'linear-gradient(160deg, #fcfcfd 0%, #eef3f8 100%)'
-    }
+    },
+    board: {
+      dark: 'linear-gradient(180deg, #07a44e 0%, #09bc5f 58%, #08733f 100%)',
+      light: 'linear-gradient(180deg, #effaf1 0%, #dff5e8 50%, #f9fff9 100%)'
+    },
   };
 
   return gradients[template]?.[theme] || gradients.classic.dark;
@@ -1070,7 +972,10 @@ async function bgHandleUpload(files) {
 
 function getTemplateBase(template, headingScale) {
   if (template === 'spotlight') {
-    return { padTB: .033, padLR: .055, sebiFz: .018, sebiMb: .009, titleFz: .074 * headingScale, titleMb: .022 * headingScale, secFz: .018, secMt: .03, secMb: .012, thFz: .017, thPad: .014, tdFz: .02, tdPad: .013, discFz: .013, discMt: .03, shellPad: .024, metaFz: .012 };
+    return { padTB: .03, padLR: .05, sebiFz: .017, sebiMb: .008, titleFz: .069 * headingScale, titleMb: .018 * headingScale, secFz: .0165, secMt: .022, secMb: .01, thFz: .0155, thPad: .011, tdFz: .0185, tdPad: .01, discFz: .0118, discMt: .022, shellPad: .018, metaFz: .011 };
+  }
+  if (template === 'board') {
+    return { padTB: .028, padLR: .045, sebiFz: .0165, sebiMb: .008, titleFz: .066 * headingScale, titleMb: .017 * headingScale, secFz: .0138, secMt: .014, secMb: .008, thFz: .0105, thPad: .0075, tdFz: .0165, tdPad: .0075, discFz: .0102, discMt: .012, shellPad: .012, metaFz: .009 };
   }
   if (template === 'stacked') {
     return { padTB: .033, padLR: .046, sebiFz: .017, sebiMb: .009, titleFz: .07 * headingScale, titleMb: .022 * headingScale, secFz: .015, secMt: .018, secMb: .009, thFz: .012, thPad: .01, tdFz: .019, tdPad: .009, discFz: .012, discMt: .02, shellPad: .018, metaFz: .01 };
@@ -1079,24 +984,21 @@ function getTemplateBase(template, headingScale) {
     return { padTB: .033, padLR: .05, sebiFz: .017, sebiMb: .009, titleFz: .07 * headingScale, titleMb: .022 * headingScale, secFz: .015, secMt: .02, secMb: .01, thFz: .0115, thPad: .009, tdFz: .0185, tdPad: .0095, discFz: .0115, discMt: .02, shellPad: .019, metaFz: .01 };
   }
   if (template === 'ribbon') {
-    return { padTB: .036, padLR: .047, sebiFz: .017, sebiMb: .01, titleFz: .07 * headingScale, titleMb: .025 * headingScale, secFz: .015, secMt: .017, secMb: .01, thFz: .0115, thPad: .009, tdFz: .0185, tdPad: .01, discFz: .0115, discMt: .021, shellPad: .019, metaFz: .0105 };
+    return { padTB: .03, padLR: .043, sebiFz: .0165, sebiMb: .008, titleFz: .066 * headingScale, titleMb: .018 * headingScale, secFz: .0138, secMt: .013, secMb: .008, thFz: .0105, thPad: .0078, tdFz: .017, tdPad: .0082, discFz: .0102, discMt: .012, shellPad: .013, metaFz: .009 };
   }
   if (template === 'glass') {
-    return { padTB: .04, padLR: .05, sebiFz: .0175, sebiMb: .011, titleFz: .071 * headingScale, titleMb: .029 * headingScale, secFz: .0155, secMt: .02, secMb: .01, thFz: .011, thPad: .01, tdFz: .018, tdPad: .01, discFz: .012, discMt: .022, shellPad: .02, metaFz: .0105 };
-  }
-  if (template === 'editorial') {
-    return { padTB: .038, padLR: .048, sebiFz: .0175, sebiMb: .011, titleFz: .072 * headingScale, titleMb: .027 * headingScale, secFz: .016, secMt: .018, secMb: .01, thFz: .011, thPad: .01, tdFz: .0185, tdPad: .01, discFz: .0118, discMt: .02, shellPad: .02, metaFz: .011 };
+    return { padTB: .032, padLR: .046, sebiFz: .0165, sebiMb: .008, titleFz: .067 * headingScale, titleMb: .02 * headingScale, secFz: .014, secMt: .013, secMb: .008, thFz: .0105, thPad: .0078, tdFz: .017, tdPad: .0082, discFz: .0102, discMt: .012, shellPad: .013, metaFz: .009 };
   }
   if (template === 'pillars') {
-    return { padTB: .036, padLR: .046, sebiFz: .017, sebiMb: .01, titleFz: .068 * headingScale, titleMb: .024 * headingScale, secFz: .0155, secMt: .018, secMb: .01, thFz: .0112, thPad: .01, tdFz: .018, tdPad: .01, discFz: .0115, discMt: .021, shellPad: .019, metaFz: .0105 };
+    return { padTB: .031, padLR: .044, sebiFz: .0165, sebiMb: .008, titleFz: .064 * headingScale, titleMb: .018 * headingScale, secFz: .0142, secMt: .013, secMb: .008, thFz: .0105, thPad: .0078, tdFz: .017, tdPad: .0082, discFz: .0102, discMt: .012, shellPad: .013, metaFz: .009 };
   }
   if (template === 'ledger') {
-    return { padTB: .033, padLR: .044, sebiFz: .0165, sebiMb: .009, titleFz: .066 * headingScale, titleMb: .022 * headingScale, secFz: .0145, secMt: .014, secMb: .008, thFz: .012, thPad: .009, tdFz: .017, tdPad: .0085, discFz: .011, discMt: .018, shellPad: .016, metaFz: .01 };
+    return { padTB: .03, padLR: .042, sebiFz: .016, sebiMb: .008, titleFz: .062 * headingScale, titleMb: .017 * headingScale, secFz: .0138, secMt: .012, secMb: .007, thFz: .011, thPad: .008, tdFz: .0162, tdPad: .0075, discFz: .010, discMt: .011, shellPad: .012, metaFz: .009 };
   }
   if (template === 'mono') {
-    return { padTB: .037, padLR: .048, sebiFz: .017, sebiMb: .01, titleFz: .069 * headingScale, titleMb: .025 * headingScale, secFz: .0155, secMt: .017, secMb: .009, thFz: .0112, thPad: .009, tdFz: .018, tdPad: .0095, discFz: .0115, discMt: .02, shellPad: .018, metaFz: .0105 };
+    return { padTB: .031, padLR: .044, sebiFz: .0165, sebiMb: .008, titleFz: .065 * headingScale, titleMb: .018 * headingScale, secFz: .014, secMt: .013, secMb: .008, thFz: .0105, thPad: .0078, tdFz: .0168, tdPad: .008, discFz: .0102, discMt: .012, shellPad: .013, metaFz: .009 };
   }
-  return { padTB: .033, padLR: .05, sebiFz: .019, sebiMb: .009, titleFz: .08 * headingScale, titleMb: .022 * headingScale, secFz: .021, secMt: .025, secMb: .01, thFz: .019, thPad: .014, tdFz: .022, tdPad: .012, discFz: .013, discMt: .028, shellPad: .022, metaFz: .012 };
+  return { padTB: .024, padLR: .044, sebiFz: .0165, sebiMb: .006, titleFz: .072 * headingScale, titleMb: .012 * headingScale, secFz: .0155, secMt: .012, secMb: .006, thFz: .0145, thPad: .009, tdFz: .0178, tdPad: .0076, discFz: .0108, discMt: .01, shellPad: .012, metaFz: .01 };
 }
 
 function getStackedColumnCount(width, sectionCount) {
@@ -1110,10 +1012,11 @@ function getPresetGridColumns(template, width, sectionCount) {
   if (sectionCount <= 1) return 1;
   if (template === 'stacked') return getStackedColumnCount(width, sectionCount);
   if (template === 'tagged') return width >= 820 ? 2 : 1;
-  if (template === 'ribbon') return width >= 760 ? 2 : 1;
-  if (template === 'glass') return width >= 930 ? Math.min(3, sectionCount) : width >= 690 ? 2 : 1;
-  if (template === 'pillars') return width >= 920 ? Math.min(3, sectionCount) : width >= 700 ? 2 : 1;
-  if (template === 'mono') return width >= 820 ? 2 : 1;
+  if (template === 'board') return width >= 960 ? Math.min(3, sectionCount) : width >= 620 ? 2 : 1;
+  if (template === 'ribbon') return width >= 620 ? Math.min(2, sectionCount) : 1;
+  if (template === 'glass') return width >= 920 ? Math.min(3, sectionCount) : width >= 620 ? 2 : 1;
+  if (template === 'pillars') return width >= 620 ? Math.min(2, sectionCount) : 1;
+  if (template === 'mono') return width >= 620 ? 2 : 1;
   return 1;
 }
 
@@ -1134,6 +1037,13 @@ function estimateNaturalHeight(template, sections, width, headingScale, tableSpa
   if (template === 'spotlight') {
     const sectionHeight = sections.reduce((sum, section) => sum + px(base.shellPad) * 2 + px(base.secFz) + px(base.thFz) + px(base.thPad) * 2 + section.rows.length * (px(base.tdFz) + px(base.tdPad) * 2) + (section.more ? px(base.tdFz) * 1.2 : sectionGap * .4) + sectionGap, 0);
     return px(base.padTB) * 2 + px(base.sebiFz) + px(base.sebiMb) + px(base.titleFz) * 1.08 + px(base.titleMb) + sectionHeight + px(base.discFz) * 3.1 + px(base.discMt);
+  }
+
+  if (template === 'board') {
+    const columns = getPresetGridColumns(template, width, sections.length);
+    const sectionHeights = sections.map(section => px(base.shellPad) * 2.1 + px(base.secFz) * 1.12 + px(base.thFz) * 1.25 + section.rows.length * (px(base.tdFz) * 1.3 + px(base.tdPad) * 2) + (section.more ? px(base.tdFz) * .96 : px(base.secMt) * .3));
+    const gridHeight = estimateGridHeight(sectionHeights, columns, sectionGap);
+    return px(base.padTB) * 2 + px(base.sebiFz) + px(base.sebiMb) + px(base.titleFz) * 1.05 + px(base.titleMb) + gridHeight + px(base.discFz) * 2.9 + px(base.discMt);
   }
 
   if (template === 'stacked') {
@@ -1167,21 +1077,9 @@ function estimateNaturalHeight(template, sections, width, headingScale, tableSpa
     return px(base.padTB) * 2 + px(base.sebiFz) + px(base.sebiMb) + px(base.titleFz) * 1.05 + px(base.titleMb) + gridHeight + px(base.discFz) * 3 + px(base.discMt);
   }
 
-  if (template === 'editorial') {
-    const lead = sections[0];
-    const rest = sections.slice(1);
-    const heroHeight = lead
-      ? px(base.shellPad) * 2.4 + px(base.secFz) * 1.55 + lead.rows.length * (px(base.tdFz) * 1.25 + px(base.tdPad) * 1.75) + (lead.more ? px(base.tdFz) : px(base.secMt) * .3)
-      : 0;
-    const supportColumns = width >= 820 ? 2 : 1;
-    const supportHeights = rest.map(section => px(base.shellPad) * 2 + px(base.secFz) + section.rows.length * (px(base.tdFz) * 1.2 + px(base.tdPad) * 1.85) + (section.more ? px(base.tdFz) : px(base.secMt) * .28));
-    const supportHeight = rest.length ? estimateGridHeight(supportHeights, supportColumns, sectionGap) : 0;
-    return px(base.padTB) * 2 + px(base.sebiFz) + px(base.sebiMb) + px(base.titleFz) * 1.05 + px(base.titleMb) + heroHeight + supportHeight + px(base.discFz) * 3 + px(base.discMt);
-  }
-
   if (template === 'pillars') {
     const columns = getPresetGridColumns(template, width, sections.length);
-    const sectionHeights = sections.map(section => px(base.shellPad) * 2.4 + px(base.secFz) * 1.45 + section.rows.length * (px(base.tdFz) * 1.34 + px(base.tdPad) * 1.8) + (section.more ? px(base.tdFz) * 1.05 : px(base.secMt) * .32));
+    const sectionHeights = sections.map(section => px(base.shellPad) * 2.8 + px(base.secFz) * 1.55 + section.rows.length * (px(base.tdFz) * 1.34 + px(base.tdPad) * 1.8) + (section.more ? px(base.tdFz) * 1.05 : px(base.secMt) * .32));
     const gridHeight = estimateGridHeight(sectionHeights, columns, sectionGap);
     return px(base.padTB) * 2 + px(base.sebiFz) + px(base.sebiMb) + px(base.titleFz) * 1.03 + px(base.titleMb) + gridHeight + px(base.discFz) * 3 + px(base.discMt);
   }
@@ -1260,19 +1158,19 @@ function renderClassicSections(fragment, sections, sizes, tableSpacing, horizont
   sections.forEach(section => {
     const label = createEditableElement('div', 'card-section', section.name);
     label.style.fontSize = `${sizes.secFz}px`;
-    label.style.marginTop = `${Math.round(sizes.secMt * tableSpacing)}px`;
-    label.style.marginBottom = `${sizes.secMb}px`;
+    label.style.marginTop = `${Math.max(4, Math.round(sizes.secMt * tableSpacing * 0.72))}px`;
+    label.style.marginBottom = `${Math.max(2, Math.round(sizes.secMb * 0.75))}px`;
     fragment.appendChild(label);
 
     const headers = COL_HEADERS[section.name] || COL_HEADERS.EQUITY;
     const table = buildDataTable(headers, section.rows, sizes, horizontalPad);
-    table.style.marginBottom = section.more ? '0px' : `${Math.round(sizes.secMt * (tableSpacing - 1))}px`;
+    table.style.marginBottom = section.more ? '0px' : `${Math.max(2, Math.round(sizes.secMt * Math.max(tableSpacing - 1, 0) * 0.45))}px`;
     fragment.appendChild(table);
 
     if (section.more) {
       const more = createSectionMore(section.more, Math.round(sizes.tdFz * .78));
-      more.style.marginTop = `${Math.round(sizes.tdPad * .8)}px`;
-      more.style.marginBottom = `${Math.round(sizes.secMt * tableSpacing)}px`;
+      more.style.marginTop = `${Math.max(2, Math.round(sizes.tdPad * .45))}px`;
+      more.style.marginBottom = `${Math.max(4, Math.round(sizes.secMt * tableSpacing * 0.68))}px`;
       fragment.appendChild(more);
     }
   });
@@ -1452,6 +1350,68 @@ function renderTaggedSections(fragment, sections, sizes, width, tableSpacing) {
   fragment.appendChild(layout);
 }
 
+function renderBoardSections(fragment, sections, sizes, width) {
+  const columns = getPresetGridColumns('board', width, sections.length);
+  const layout = document.createElement('div');
+  layout.className = 'board-layout';
+  layout.style.gridTemplateColumns = `repeat(${columns}, minmax(0, 1fr))`;
+  layout.dataset.columns = String(columns);
+
+  sections.forEach((section, index) => {
+    const accent = getSectionAccent(index);
+    const shell = document.createElement('section');
+    shell.className = 'board-shell';
+    shell.style.setProperty('--accent-a', accent.a);
+    shell.style.setProperty('--accent-b', accent.b);
+    shell.style.setProperty('--accent-soft', accent.soft);
+
+    const pin = document.createElement('span');
+    pin.className = 'board-pin';
+
+    const ribbon = document.createElement('div');
+    ribbon.className = 'board-ribbon';
+    const title = createEditableElement('div', 'board-title', section.name);
+    title.style.fontSize = `${sizes.secFz}px`;
+    ribbon.appendChild(title);
+
+    const head = document.createElement('div');
+    head.className = 'board-head';
+    head.style.fontSize = `${Math.round(sizes.thFz * .82)}px`;
+    head.innerHTML = '<span>Stock</span><span>Return</span><span>Time</span>';
+
+    const list = document.createElement('div');
+    list.className = 'board-list';
+    section.rows.forEach(row => {
+      const item = document.createElement('div');
+      item.className = 'board-row';
+
+      const name = createEditableElement('div', 'board-name', row.name);
+      name.style.fontSize = `${sizes.tdFz}px`;
+
+      const returns = createEditableElement('div', 'board-return', row.returns);
+      returns.style.fontSize = `${Math.round(sizes.tdFz * .84)}px`;
+
+      const time = createEditableElement('div', 'board-time', row.duration);
+      time.style.fontSize = `${Math.round(sizes.tdFz * .74)}px`;
+
+      item.append(name, returns, time);
+      list.appendChild(item);
+    });
+
+    shell.append(pin, ribbon, head, list);
+
+    if (section.more) {
+      const more = createSectionMore(section.more, Math.round(sizes.tdFz * .74));
+      more.classList.add('board-more');
+      shell.appendChild(more);
+    }
+
+    layout.appendChild(shell);
+  });
+
+  fragment.appendChild(layout);
+}
+
 function renderRibbonSections(fragment, sections, sizes, width) {
   const columns = getPresetGridColumns('ribbon', width, sections.length);
   const layout = document.createElement('div');
@@ -1580,123 +1540,6 @@ function renderGlassSections(fragment, sections, sizes, width) {
   fragment.appendChild(layout);
 }
 
-function renderEditorialSections(fragment, sections, sizes, width) {
-  if (!sections.length) return;
-
-  const [leadSection, ...supportSections] = sections;
-  const layout = document.createElement('div');
-  layout.className = 'editorial-layout';
-
-  const leadAccent = getSectionAccent(0);
-  const hero = document.createElement('section');
-  hero.className = 'editorial-hero';
-  hero.style.setProperty('--accent-a', leadAccent.a);
-  hero.style.setProperty('--accent-b', leadAccent.b);
-  hero.style.setProperty('--accent-soft', leadAccent.soft);
-
-  const heroTop = document.createElement('div');
-  heroTop.className = 'editorial-hero-top';
-  const heroBadge = createEditableElement('div', 'editorial-badge', leadSection.name);
-  heroBadge.style.fontSize = `${sizes.secFz}px`;
-  heroTop.appendChild(heroBadge);
-
-  const heroGrid = document.createElement('div');
-  heroGrid.className = 'editorial-hero-grid';
-
-  const heroCopy = document.createElement('div');
-  heroCopy.className = 'editorial-copy';
-  const heroKicker = createEditableElement('div', 'editorial-kicker', 'Lead Segment');
-  heroKicker.style.fontSize = `${Math.round(sizes.thFz * .9)}px`;
-  const heroCaption = createEditableElement('div', 'editorial-caption', 'Highlighted trades in focus');
-  heroCaption.style.fontSize = `${Math.round(sizes.tdFz * .9)}px`;
-  heroCopy.append(heroKicker, heroCaption);
-
-  const heroList = document.createElement('div');
-  heroList.className = 'editorial-list';
-  leadSection.rows.forEach(row => {
-    const item = document.createElement('div');
-    item.className = 'editorial-hero-row';
-
-    const main = document.createElement('div');
-    main.className = 'editorial-hero-main';
-    const name = createEditableElement('div', 'editorial-hero-name', row.name);
-    name.style.fontSize = `${sizes.tdFz}px`;
-    const time = createEditableElement('div', 'editorial-hero-time', row.duration);
-    time.style.fontSize = `${Math.round(sizes.tdFz * .72)}px`;
-    main.append(name, time);
-
-    const returns = createEditableElement('div', 'editorial-hero-return', row.returns);
-    returns.style.fontSize = `${Math.round(sizes.tdFz * .9)}px`;
-
-    item.append(main, returns);
-    heroList.appendChild(item);
-  });
-
-  heroGrid.append(heroCopy, heroList);
-  hero.append(heroTop, heroGrid);
-
-  if (leadSection.more) {
-    const more = createSectionMore(leadSection.more, Math.round(sizes.tdFz * .76));
-    more.classList.add('editorial-more');
-    hero.appendChild(more);
-  }
-
-  layout.appendChild(hero);
-
-  if (supportSections.length) {
-    const supportGrid = document.createElement('div');
-    supportGrid.className = 'editorial-grid';
-    supportGrid.style.gridTemplateColumns = `repeat(${width >= 820 ? 2 : 1}, minmax(0, 1fr))`;
-
-    supportSections.forEach((section, index) => {
-      const accent = getSectionAccent(index + 1);
-      const shell = document.createElement('section');
-      shell.className = 'editorial-shell';
-      shell.style.setProperty('--accent-a', accent.a);
-      shell.style.setProperty('--accent-b', accent.b);
-      shell.style.setProperty('--accent-soft', accent.soft);
-
-      const top = document.createElement('div');
-      top.className = 'editorial-shell-top';
-      const title = createEditableElement('div', 'editorial-shell-title', section.name);
-      title.style.fontSize = `${sizes.secFz}px`;
-      top.appendChild(title);
-      shell.appendChild(top);
-
-      section.rows.forEach(row => {
-        const item = document.createElement('div');
-        item.className = 'editorial-row';
-
-        const main = document.createElement('div');
-        main.className = 'editorial-row-main';
-        const name = createEditableElement('div', 'editorial-row-name', row.name);
-        name.style.fontSize = `${sizes.tdFz}px`;
-        const time = createEditableElement('div', 'editorial-row-time', row.duration);
-        time.style.fontSize = `${Math.round(sizes.tdFz * .7)}px`;
-        main.append(name, time);
-
-        const returns = createEditableElement('div', 'editorial-row-return', row.returns);
-        returns.style.fontSize = `${Math.round(sizes.tdFz * .84)}px`;
-
-        item.append(main, returns);
-        shell.appendChild(item);
-      });
-
-      if (section.more) {
-        const more = createSectionMore(section.more, Math.round(sizes.tdFz * .74));
-        more.classList.add('editorial-more');
-        shell.appendChild(more);
-      }
-
-      supportGrid.appendChild(shell);
-    });
-
-    layout.appendChild(supportGrid);
-  }
-
-  fragment.appendChild(layout);
-}
-
 function renderPillarSections(fragment, sections, sizes, width) {
   const columns = getPresetGridColumns('pillars', width, sections.length);
   const layout = document.createElement('div');
@@ -1712,6 +1555,9 @@ function renderPillarSections(fragment, sections, sizes, width) {
     shell.style.setProperty('--accent-b', accent.b);
     shell.style.setProperty('--accent-soft', accent.soft);
 
+    const header = document.createElement('div');
+    header.className = 'pillar-header';
+
     const cap = document.createElement('div');
     cap.className = 'pillar-cap';
     const title = createEditableElement('div', 'pillar-title', section.name);
@@ -1720,6 +1566,7 @@ function renderPillarSections(fragment, sections, sizes, width) {
 
     const caption = createEditableElement('div', 'pillar-caption', 'Trade highlights');
     caption.style.fontSize = `${Math.round(sizes.tdFz * .76)}px`;
+    header.append(cap, caption);
 
     const list = document.createElement('div');
     list.className = 'pillar-list';
@@ -1745,7 +1592,7 @@ function renderPillarSections(fragment, sections, sizes, width) {
       list.appendChild(item);
     });
 
-    shell.append(cap, caption, list);
+    shell.append(header, list);
 
     if (section.more) {
       const more = createSectionMore(section.more, Math.round(sizes.tdFz * .74));
@@ -1906,7 +1753,6 @@ function doGenerate() {
 
   lastParseModel = parseModel;
   updateSmartParseUI(parseModel);
-  syncAiConfigUI();
 
   card.className = `card template-${template} theme-${theme}`;
   card.style.width = `${width}px`;
@@ -1934,8 +1780,12 @@ function doGenerate() {
   sebiLine.style.marginBottom = `${sizes.sebiMb}px`;
   makeEditable(sebiLine);
 
-  titleBlock.style.marginBottom = `${sizes.titleMb}px`;
-  titleBlock.innerHTML = `<span class="t-green" style="font-size:${sizes.titleFz}px">${titleParts.accent} </span><span class="t-white" style="font-size:${sizes.titleFz}px">${titleParts.main}</span>`;
+  titleBlock.style.marginBottom = `${Math.max(2, Math.round(sizes.titleMb * 0.72))}px`;
+  titleBlock.innerHTML = `
+    <span class="t-green title-count" style="font-size:${Math.round(sizes.titleFz * 1.28)}px">${titleParts.count}</span>
+    <span class="t-green title-lead" style="font-size:${Math.round(sizes.titleFz * 0.9)}px">${titleParts.leadWord}</span>
+    <span class="t-white title-main" style="font-size:${sizes.titleFz}px">${titleParts.main}</span>
+  `;
   makeEditable(titleBlock);
 
   disclaimerBlock.textContent = document.getElementById('disclaimer').value;
@@ -1956,18 +1806,19 @@ function doGenerate() {
   }
 
   if (template === 'spotlight') renderSpotlightSections(fragment, sections, sizes, tableSpacing, horizontalPad);
+  else if (template === 'board') renderBoardSections(fragment, sections, sizes, width);
   else if (template === 'stacked') renderStackedSections(fragment, sections, sizes, width, tableSpacing);
   else if (template === 'tagged') renderTaggedSections(fragment, sections, sizes, width, tableSpacing);
   else if (template === 'ribbon') renderRibbonSections(fragment, sections, sizes, width);
   else if (template === 'glass') renderGlassSections(fragment, sections, sizes, width);
-  else if (template === 'editorial') renderEditorialSections(fragment, sections, sizes, width);
   else if (template === 'pillars') renderPillarSections(fragment, sections, sizes, width);
   else if (template === 'ledger') renderLedgerSections(fragment, sections, sizes, tableSpacing, horizontalPad);
   else if (template === 'mono') renderMonoSections(fragment, sections, sizes, width);
   else renderClassicSections(fragment, sections, sizes, tableSpacing, horizontalPad);
 
   container.appendChild(fragment);
-  maybeAutoRunAiAssist(parseModel);
+
+  requestAnimationFrame(syncPreviewAreaLayout);
 }
 
 function download() {
@@ -1999,8 +1850,9 @@ window.addEventListener('DOMContentLoaded', () => {
   const globalFormat = { primary: { b: true, i: false, u: false }, secondary: { b: false, i: false, u: false }, tertiary: { b: true, i: false, u: false } };
 
   function setActivePreset(template) {
-    document.querySelectorAll('.preset-btn').forEach(button => button.classList.toggle('active', button.getAttribute('data-template') === template));
-    localStorage.setItem('designPreset', template);
+    const safeTemplate = ACTIVE_TEMPLATES.includes(template) ? template : 'classic';
+    document.querySelectorAll('.preset-btn').forEach(button => button.classList.toggle('active', button.getAttribute('data-template') === safeTemplate));
+    localStorage.setItem('designPreset', safeTemplate);
   }
 
   function setThemeButtons(theme) {
@@ -2071,7 +1923,6 @@ window.addEventListener('DOMContentLoaded', () => {
   const savedFormatState = localStorage.getItem('globalFormat');
   if (savedFormatState) Object.assign(globalFormat, JSON.parse(savedFormatState));
   syncFormats();
-  syncAiConfigUI();
 
   bgOpenDB().then(async db => {
     bgDB = db;
@@ -2134,6 +1985,11 @@ window.addEventListener('DOMContentLoaded', () => {
         generate();
       }
     });
+  });
+
+  document.getElementById('resetTokenColors').addEventListener('click', () => {
+    applyThemePalette(getActiveTheme());
+    generate();
   });
 
   document.querySelectorAll('.fmt-tog').forEach(button => {
@@ -2234,27 +2090,6 @@ window.addEventListener('DOMContentLoaded', () => {
     if (parser.learnCorrections) parser.learnCorrections((lastParseModel.reviewItems || []).filter(item => item.suggestion));
     document.getElementById('inputText').value = lastParseModel.normalizedText;
     generate();
-  });
-  document.querySelectorAll('.ai-quick-btn').forEach(button => {
-    button.addEventListener('click', () => {
-      applyAiQuickPreset(button.dataset.aiEndpoint, button.dataset.aiModel, button.dataset.aiKey || 'ollama');
-    });
-  });
-  document.getElementById('saveAiSettings').addEventListener('click', () => {
-    const parser = getParserApi();
-    parser.setAiConfig({
-      enabled: document.getElementById('aiAssistEnabled').checked,
-      endpoint: document.getElementById('aiEndpoint').value.trim(),
-      model: document.getElementById('aiModel').value.trim(),
-      apiKey: document.getElementById('aiApiKey').value.trim(),
-      autoRun: document.getElementById('aiAssistEnabled').checked
-    });
-    aiAssistState.lastRequestedText = '';
-    syncAiConfigUI();
-    setAiStatus('AI settings saved locally in this browser.');
-  });
-  document.getElementById('runAiAssist').addEventListener('click', () => {
-    requestAiAssist(true);
   });
   document.getElementById('parseReviewToggle').addEventListener('click', () => {
     if (!lastParseModel?.reviewItems?.length) return;
