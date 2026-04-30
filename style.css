@@ -260,7 +260,7 @@ select:focus {
 .parse-card {
   padding: 14px;
   border: 1px solid #deebfa;
-  border-radius: 18px;
+  border-radius: 0;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 249, 255, 0.96));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
 }
@@ -662,7 +662,7 @@ input[type="range"] {
 
 .preset-btn {
   border: 1.5px solid #dce7f2;
-  border-radius: 18px;
+  border-radius: 0;
   padding: 12px 12px 13px;
   background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
   cursor: pointer;
@@ -989,7 +989,7 @@ input[type="range"] {
   color: var(--color-secondary);
   position: relative;
   overflow: hidden;
-  border-radius: 18px;
+  border-radius: 0;
   box-shadow: var(--shadow-elevated), 0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 
@@ -1294,7 +1294,6 @@ input[type="range"] {
 
 .spotlight-shell {
   position: relative;
-  border-radius: 26px;
   border: var(--table-bw) solid var(--surface-border);
   padding: 16px;
   overflow: hidden;
@@ -1357,7 +1356,6 @@ input[type="range"] {
   z-index: 1;
   margin-top: 12px;
   overflow: hidden;
-  border-radius: 20px;
   border: var(--table-bw) solid var(--surface-border);
   background: rgba(8, 12, 18, 0.28);
   backdrop-filter: blur(12px);
@@ -1406,7 +1404,6 @@ input[type="range"] {
   --accent-soft: rgba(99, 230, 255, 0.2);
   position: relative;
   overflow: hidden;
-  border-radius: 24px;
   border: var(--table-bw) solid var(--surface-border);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
   box-shadow: 0 18px 34px rgba(0, 0, 0, 0.18);
@@ -1549,7 +1546,6 @@ input[type="range"] {
   position: relative;
   overflow: visible;
   padding: 14px 22px 12px 14px;
-  border-radius: 22px;
   border: var(--table-bw) solid rgba(255, 255, 255, 0.08);
   background: linear-gradient(180deg, rgba(22, 24, 50, 0.96), rgba(14, 17, 34, 0.94));
   box-shadow: 0 18px 36px rgba(0, 0, 0, 0.3);
@@ -1701,14 +1697,6 @@ input[type="range"] {
   overflow: hidden;
   border: 1px solid var(--surface-border);
   box-shadow: 0 18px 36px rgba(0, 0, 0, 0.16);
-}
-
-.board-shell,
-.ribbon-shell,
-.glass-shell,
-.pillar-shell,
-.mono-shell {
-  border-radius: 26px;
 }
 
 .card.theme-light .board-shell,
@@ -1877,7 +1865,6 @@ input[type="range"] {
   align-items: center;
   gap: 10px;
   padding: 9px 12px;
-  border-radius: 18px;
   background: linear-gradient(90deg, var(--accent-a), var(--accent-b));
   color: #ffffff;
 }
@@ -1911,7 +1898,6 @@ input[type="range"] {
 
 .ribbon-row {
   padding: 10px 12px 9px;
-  border-radius: 20px;
   border: 1px solid var(--surface-border);
   background: rgba(255, 255, 255, 0.04);
 }
@@ -2052,7 +2038,6 @@ input[type="range"] {
 
 .glass-row {
   padding: 10px;
-  border-radius: 18px;
   background: rgba(8, 12, 18, 0.22);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -2094,7 +2079,6 @@ input[type="range"] {
   gap: 4px;
   padding: 12px 12px 14px;
   margin-bottom: 12px;
-  border-radius: 22px;
   background: linear-gradient(90deg, var(--accent-a), var(--accent-b));
 }
 
@@ -2170,7 +2154,6 @@ input[type="range"] {
 
 .ledger-shell {
   margin-top: 8px;
-  border-radius: 22px;
   padding: 10px 10px 12px;
   border: var(--table-bw) solid var(--surface-border);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
