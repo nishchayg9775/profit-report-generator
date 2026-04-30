@@ -1821,19 +1821,118 @@ function doGenerate() {
   requestAnimationFrame(syncPreviewAreaLayout);
 }
 
-function download() {
-  html2canvas(document.getElementById('card'), { scale: 2, backgroundColor: null, useCORS: true }).then(canvas => {
-    const anchor = document.createElement('a');
-    let customName = document.getElementById('fileName').value.trim();
-    if (!customName) {
-      const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-      const date = new Date();
-      customName = `Univest_Profit_Report_${date.getDate()}_${months[date.getMonth()]}`;
-    }
-    anchor.download = `${customName}.jpg`;
-    anchor.href = canvas.toDataURL('image/jpeg', .95);
-    anchor.click();
+function getExportFileName() {
+  let customName = document.getElementById('fileName').value.trim();
+  if (customName) return customName;
+  const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const date = new Date();
+  return `Univest_Profit_Report_${date.getDate()}_${months[date.getMonth()]}`;
+}
+
+function triggerCanvasDownload(canvas, fileName) {
+  const anchor = document.createElement('a');
+  anchor.download = `${fileName}.jpg`;
+  anchor.href = canvas.toDataURL('image/jpeg', 0.95);
+  anchor.click();
+}
+
+function waitForImages(root) {
+  const images = Array.from(root.querySelectorAll('img'));
+  return Promise.all(images.map(image => {
+    if (image.complete) return Promise.resolve();
+    return new Promise(resolve => {
+      image.addEventListener('load', resolve, { once: true });
+      image.addEventListener('error', resolve, { once: true });
+    });
+  }));
+}
+
+function copyComputedStyles(source, target) {
+  const computed = window.getComputedStyle(source);
+  for (let index = 0; index < computed.length; index += 1) {
+    const property = computed[index];
+    target.style.setProperty(property, computed.getPropertyValue(property), computed.getPropertyPriority(property));
+  }
+}
+
+function inlineCloneStyles(source, target) {
+  copyComputedStyles(source, target);
+  target.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+  const sourceChildren = Array.from(source.children);
+  const targetChildren = Array.from(target.children);
+  for (let index = 0; index < sourceChildren.length; index += 1) {
+    inlineCloneStyles(sourceChildren[index], targetChildren[index]);
+  }
+}
+
+async function exportCardWithSvg(card, fileName) {
+  if (document.fonts?.ready) await document.fonts.ready;
+  await waitForImages(card);
+
+  const rect = card.getBoundingClientRect();
+  const width = Math.ceil(rect.width);
+  const height = Math.ceil(rect.height);
+  const scale = 2;
+
+  const clone = card.cloneNode(true);
+  inlineCloneStyles(card, clone);
+  clone.style.margin = '0';
+  clone.style.width = `${width}px`;
+  clone.style.height = `${height}px`;
+  clone.style.boxSizing = 'border-box';
+
+  const wrapper = document.createElement('div');
+  wrapper.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+  wrapper.appendChild(clone);
+
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="${width * scale}" height="${height * scale}" viewBox="0 0 ${width} ${height}">
+      <foreignObject width="100%" height="100%">
+        ${wrapper.outerHTML}
+      </foreignObject>
+    </svg>
+  `;
+
+  const image = new Image();
+  const source = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width * scale;
+  canvas.height = height * scale;
+  const context = canvas.getContext('2d');
+
+  await new Promise((resolve, reject) => {
+    image.onload = () => {
+      try {
+        context.drawImage(image, 0, 0, width * scale, height * scale);
+        resolve();
+      } catch (error) {
+        reject(error);
+      }
+    };
+    image.onerror = reject;
+    image.src = source;
   });
+
+  triggerCanvasDownload(canvas, fileName);
+}
+
+async function download() {
+  const card = document.getElementById('card');
+  const fileName = getExportFileName();
+
+  try {
+    if (typeof window.html2canvas === 'function') {
+      const canvas = await window.html2canvas(card, { scale: 2, backgroundColor: null, useCORS: true });
+      triggerCanvasDownload(canvas, fileName);
+      return;
+    }
+
+    await exportCardWithSvg(card, fileName);
+  } catch (error) {
+    console.error('Export failed.', error);
+    alert('Export failed. Please try again after the preview finishes rendering.');
+  }
 }
 
 window.addEventListener('DOMContentLoaded', () => {
