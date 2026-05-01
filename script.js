@@ -63,23 +63,19 @@ const SECTION_ACCENTS = [
 let generateTimeout;
 let customLogoData = null;
 let customLogoPos = 'top-left';
-let bgDB = null;
-let bgLibrary = [];
-let bgActiveId = null;
 let lastParseModel = null;
 let parseReviewExpanded = false;
+let appHistory = [];
+let appHistoryIndex = -1;
+let appStateSaveTimeout = 0;
+let appStateHydrating = true;
+let generateFrame = 0;
+let generateSerial = 0;
+let latestGeneratePromise = Promise.resolve();
 
-function bgBuildBundledUrl(fileName) {
-  const encodedPath = fileName.split('/').map(encodeURIComponent).join('/');
-  return new URL(encodedPath, window.location.href).href;
-}
-
-const BUNDLED_BACKGROUNDS = [
-  { id: 'bundled-1', name: '137497973_9c1d7588-1a4f-1.jpg', dataUrl: bgBuildBundledUrl('137497973_9c1d7588-1a4f-1.jpg'), isBundled: true },
-  { id: 'bundled-2', name: '137497973_9c1d7588-1a4f-11ee-8564-42010a280815.jpg', dataUrl: bgBuildBundledUrl('137497973_9c1d7588-1a4f-11ee-8564-42010a280815.jpg'), isBundled: true },
-  { id: 'bundled-3', name: 'dasa.jpg', dataUrl: bgBuildBundledUrl('dasa.jpg'), isBundled: true },
-  { id: 'bundled-4', name: 'bg-4.jpeg', dataUrl: bgBuildBundledUrl('bg-4.jpeg'), isBundled: true }
-];
+const APP_STATE_KEY = 'profit_report_app_state_v2';
+const APP_HISTORY_KEY = 'profit_report_app_history_v1';
+const APP_HISTORY_LIMIT = 25;
 
 function cleanInputLine(rawLine) {
   return rawLine
@@ -542,7 +538,7 @@ function parseInput(text) {
 }
 
 function getDisplayTitleParts(parseModel) {
-  const totalRows = parseModel.parsedRows || parseModel.meta.totalHint || 0;
+  const totalRows = parseModel.uniqueRows || parseModel.tradeSummary?.uniqueRows || parseModel.parsedRows || parseModel.meta.totalHint || 0;
   const defaultBody = 'Profits Booked Today';
   const titleBody = parseModel.meta.titleBody || defaultBody;
   const words = titleBody.split(/\s+/).filter(Boolean);
@@ -577,6 +573,14 @@ function updateSmartParseUI(parseModel) {
   const hasInput = document.getElementById('inputText').value.trim().length > 0;
   const sectionCount = parseModel.sections.length;
   const issueCount = parseModel.reviewItems?.length || parseModel.unmatchedLines.length;
+  const visibleRows = parseModel.visibleRows ?? Math.max(0, (parseModel.parsedRows || 0) - (parseModel.hiddenRows || 0));
+  const hiddenRows = parseModel.hiddenRows || 0;
+  const duplicateRows = parseModel.duplicateRows || 0;
+  const breakdownParts = [];
+
+  if (visibleRows) breakdownParts.push(`${visibleRows} visible`);
+  if (hiddenRows) breakdownParts.push(`${hiddenRows} hidden`);
+  if (duplicateRows) breakdownParts.push(`${duplicateRows} duplicate${duplicateRows === 1 ? '' : 's'}`);
 
   if (!hasInput) {
     summary.textContent = 'Paste trade text and smart parse will auto-detect the format';
@@ -599,18 +603,20 @@ function updateSmartParseUI(parseModel) {
   }
 
   summary.textContent = parseModel.parsedRows
-    ? `${parseModel.parsedRows} trade rows detected across ${sectionCount} section${sectionCount === 1 ? '' : 's'}`
+    ? `${parseModel.parsedRows} trade rows detected across ${sectionCount} section${sectionCount === 1 ? '' : 's'}${breakdownParts.length ? ` (${breakdownParts.join(' | ')})` : ''}`
     : 'No trade rows detected yet';
 
   if (parseModel.meta.rawTitle || parseModel.meta.dateLabel) {
-    const titleLine = parseModel.meta.titleBody ? `${parseModel.parsedRows || parseModel.meta.totalHint || ''} ${parseModel.meta.titleBody}`.trim() : parseModel.meta.rawTitle;
+    const titleLine = parseModel.meta.titleBody ? `${parseModel.uniqueRows || parseModel.tradeSummary?.uniqueRows || parseModel.parsedRows || parseModel.meta.totalHint || ''} ${parseModel.meta.titleBody}`.trim() : parseModel.meta.rawTitle;
     detail.textContent = parseModel.meta.dateLabel
       ? `Detected heading: ${titleLine} | Date: ${parseModel.meta.dateLabel}`
       : `Detected heading: ${titleLine}`;
   } else if (issueCount) {
-    detail.textContent = `${issueCount} line${issueCount === 1 ? '' : 's'} could not be mapped cleanly. Review them below.`;
+    detail.textContent = `${issueCount} line${issueCount === 1 ? '' : 's'} could not be mapped cleanly. ${breakdownParts.length ? `Breakdown: ${breakdownParts.join(' | ')}.` : 'Review them below.'}`;
   } else {
-    detail.textContent = 'Input successfully normalized into the app format.';
+    detail.textContent = breakdownParts.length
+      ? `Visible rows are ready for export. ${breakdownParts.join(' | ')}.`
+      : 'Input successfully normalized into the app format.';
   }
 
   confidence.textContent = issueCount ? `${issueCount} to review` : `${Math.round((parseModel.confidence || 0) * 100)}% ready`;
@@ -644,6 +650,10 @@ function updateSmartParseUI(parseModel) {
     ));
     if (item.suggestion) {
       review.appendChild(createTextBlock('parse-review-suggestion', `Suggested: ${item.suggestion}`));
+    } else if (item.mergeSuggestion) {
+      review.appendChild(createTextBlock('parse-review-suggestion', `Merge suggestion: ${item.mergeSuggestion}`));
+    }
+    if (item.suggestion) {
       const actions = document.createElement('div');
       actions.className = 'parse-review-actions';
       const button = document.createElement('button');
@@ -663,12 +673,23 @@ function updateSmartParseUI(parseModel) {
 
 function syncPreviewAreaLayout() {
   const previewArea = document.querySelector('.preview-area');
+  const previewStage = document.getElementById('previewStage');
+  const previewFrame = document.getElementById('previewFrame');
   const card = document.getElementById('card');
-  if (!previewArea || !card) return;
+  if (!previewArea || !previewStage || !previewFrame || !card) return;
 
   const availableHeight = Math.max(0, previewArea.clientHeight - 44);
-  const cardHeight = card.getBoundingClientRect().height;
+  const cardWidth = Math.max(1, card.offsetWidth || Math.ceil(card.getBoundingClientRect().width));
+  const cardHeight = Math.max(1, card.offsetHeight || Math.ceil(card.getBoundingClientRect().height));
+  const availableWidth = Math.max(0, previewArea.clientWidth - 32);
+  const scale = Math.min(1, availableWidth / cardWidth);
   const isTall = cardHeight > availableHeight;
+
+  previewFrame.style.width = `${cardWidth}px`;
+  previewFrame.style.height = `${cardHeight}px`;
+  previewFrame.style.transform = `scale(${scale})`;
+  previewStage.style.width = `${Math.max(1, Math.round(cardWidth * scale))}px`;
+  previewStage.style.height = `${Math.max(1, Math.round(cardHeight * scale))}px`;
 
   previewArea.classList.toggle('preview-is-tall', isTall);
   previewArea.classList.toggle('preview-is-short', !isTall);
@@ -678,10 +699,13 @@ function syncPreviewAreaLayout() {
 function getParserApi() {
   return window.smartParser || {
     parseInputModel,
+    parseInputModelAsync: async text => parseInputModel(text),
     parseInput,
     learnCorrections() {},
   };
 }
+
+window.waitForStablePreview = () => latestGeneratePromise.catch(() => {});
 
 function syncParseReviewUI(reviewCount) {
   const reviewBox = document.getElementById('parseReviewBox');
@@ -745,258 +769,6 @@ function applyAllReviewSuggestions() {
     .join('\n');
 
   generate();
-}
-
-function getActiveTheme() {
-  const active = document.querySelector('.theme-btn.active');
-  return active ? active.getAttribute('data-theme') : 'dark';
-}
-
-function getSelectedTemplate() {
-  const active = document.querySelector('.preset-btn.active');
-  const template = active ? active.getAttribute('data-template') : 'classic';
-  return ACTIVE_TEMPLATES.includes(template) ? template : 'classic';
-}
-
-function getSectionAccent(index) {
-  return SECTION_ACCENTS[index % SECTION_ACCENTS.length];
-}
-
-function makeEditable(element) {
-  element.contentEditable = 'true';
-  element.spellcheck = false;
-  return element;
-}
-
-function createEditableElement(tagName, className, text) {
-  const element = document.createElement(tagName);
-  if (className) element.className = className;
-  element.textContent = text;
-  return makeEditable(element);
-}
-
-function createTextSpan(className, text) {
-  const element = document.createElement('span');
-  if (className) element.className = className;
-  element.textContent = text;
-  return element;
-}
-
-function createTextBlock(className, text) {
-  const element = document.createElement('div');
-  if (className) element.className = className;
-  element.textContent = text;
-  return element;
-}
-
-function createSectionMore(text, fontSize) {
-  const more = createEditableElement('div', 'section-more', text);
-  more.style.fontSize = `${fontSize}px`;
-  return more;
-}
-
-function bgGetAll() {
-  return [...BUNDLED_BACKGROUNDS, ...bgLibrary];
-}
-
-function bgOpenDB() {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open('bgStore', 1);
-    request.onupgradeneeded = event => event.target.result.createObjectStore('backgrounds', { keyPath: 'id' });
-    request.onsuccess = event => resolve(event.target.result);
-    request.onerror = event => reject(event.target.error);
-  });
-}
-
-function bgLoadAll() {
-  return new Promise(resolve => {
-    const transaction = bgDB.transaction('backgrounds', 'readonly');
-    const request = transaction.objectStore('backgrounds').getAll();
-    request.onsuccess = () => resolve(request.result || []);
-    request.onerror = () => resolve([]);
-  });
-}
-
-function bgSave(record) {
-  return new Promise(resolve => {
-    const transaction = bgDB.transaction('backgrounds', 'readwrite');
-    transaction.objectStore('backgrounds').put(record);
-    transaction.oncomplete = resolve;
-  });
-}
-
-function bgDeleteDB(id) {
-  return new Promise(resolve => {
-    const transaction = bgDB.transaction('backgrounds', 'readwrite');
-    transaction.objectStore('backgrounds').delete(id);
-    transaction.oncomplete = resolve;
-  });
-}
-
-function bgClearDefault() {
-  return new Promise(resolve => {
-    const transaction = bgDB.transaction('backgrounds', 'readwrite');
-    const store = transaction.objectStore('backgrounds');
-    const request = store.getAll();
-    request.onsuccess = () => {
-      (request.result || []).filter(item => item.isDefault).forEach(item => store.put({ ...item, isDefault: false }));
-      transaction.oncomplete = resolve;
-    };
-    request.onerror = () => resolve();
-  });
-}
-
-function getDefaultCardBackground(theme, template) {
-  const gradients = {
-    classic: {
-      dark: 'linear-gradient(135deg, #161922 0%, #0b0d12 100%)',
-      light: 'linear-gradient(135deg, #ffffff 0%, #eef4fb 100%)'
-    },
-    spotlight: {
-      dark: 'radial-gradient(circle at 14% 14%, rgba(99,230,255,.22), transparent 24%), radial-gradient(circle at 86% 18%, rgba(255,95,162,.18), transparent 24%), linear-gradient(160deg, #121826 0%, #1d2436 50%, #0c1018 100%)',
-      light: 'radial-gradient(circle at 14% 14%, rgba(99,230,255,.16), transparent 24%), radial-gradient(circle at 86% 18%, rgba(255,95,162,.14), transparent 24%), linear-gradient(160deg, #fffdf8 0%, #eef5ff 100%)'
-    },
-    stacked: {
-      dark: 'radial-gradient(circle at 14% 14%, rgba(123,77,255,.28), transparent 28%), radial-gradient(circle at 84% 82%, rgba(74,234,188,.18), transparent 28%), linear-gradient(160deg, #0d1020 0%, #131b30 100%)',
-      light: 'radial-gradient(circle at 14% 14%, rgba(123,77,255,.16), transparent 24%), radial-gradient(circle at 84% 82%, rgba(255,183,71,.14), transparent 28%), linear-gradient(160deg, #fffdf7 0%, #eef5ff 100%)'
-    },
-    tagged: {
-      dark: 'radial-gradient(circle at 8% 92%, rgba(128,0,255,.35), transparent 22%), radial-gradient(circle at 88% 84%, rgba(46,242,208,.2), transparent 24%), linear-gradient(155deg, #131735 0%, #171c3a 52%, #11152b 100%)',
-      light: 'radial-gradient(circle at 8% 92%, rgba(128,0,255,.14), transparent 22%), radial-gradient(circle at 88% 84%, rgba(46,242,208,.12), transparent 24%), linear-gradient(155deg, #fbfbff 0%, #eef4ff 52%, #f7fbff 100%)'
-    },
-    ribbon: {
-      dark: 'radial-gradient(circle at 12% 18%, rgba(255,95,162,.2), transparent 24%), radial-gradient(circle at 86% 12%, rgba(123,77,255,.2), transparent 24%), linear-gradient(145deg, #17111f 0%, #241739 56%, #120f19 100%)',
-      light: 'radial-gradient(circle at 12% 18%, rgba(255,95,162,.12), transparent 24%), radial-gradient(circle at 86% 12%, rgba(123,77,255,.12), transparent 24%), linear-gradient(145deg, #fff9f6 0%, #f7f3ff 100%)'
-    },
-    glass: {
-      dark: 'radial-gradient(circle at 18% 12%, rgba(99,230,255,.18), transparent 28%), radial-gradient(circle at 82% 82%, rgba(74,234,188,.16), transparent 26%), linear-gradient(165deg, #0f1824 0%, #16263a 50%, #101924 100%)',
-      light: 'radial-gradient(circle at 18% 12%, rgba(99,230,255,.1), transparent 28%), radial-gradient(circle at 82% 82%, rgba(74,234,188,.1), transparent 26%), linear-gradient(165deg, #fbfdff 0%, #eef7ff 52%, #f9fbff 100%)'
-    },
-    pillars: {
-      dark: 'radial-gradient(circle at 50% 0%, rgba(255,255,255,.08), transparent 26%), linear-gradient(180deg, #1a1530 0%, #12192b 100%)',
-      light: 'radial-gradient(circle at 50% 0%, rgba(255,255,255,.5), transparent 26%), linear-gradient(180deg, #fffaf5 0%, #eef2f8 100%)'
-    },
-    ledger: {
-      dark: 'linear-gradient(180deg, #0b0d11 0%, #141821 100%)',
-      light: 'linear-gradient(180deg, #ffffff 0%, #f2f6fb 100%)'
-    },
-    mono: {
-      dark: 'linear-gradient(160deg, #10141c 0%, #1a202a 100%)',
-      light: 'linear-gradient(160deg, #fcfcfd 0%, #eef3f8 100%)'
-    },
-    board: {
-      dark: 'linear-gradient(180deg, #07a44e 0%, #09bc5f 58%, #08733f 100%)',
-      light: 'linear-gradient(180deg, #effaf1 0%, #dff5e8 50%, #f9fff9 100%)'
-    },
-  };
-
-  return gradients[template]?.[theme] || gradients.classic.dark;
-}
-
-function bgApply(dataUrl) {
-  const card = document.getElementById('card');
-  card.style.backgroundImage = dataUrl ? `url("${dataUrl}")` : getDefaultCardBackground(getActiveTheme(), getSelectedTemplate());
-  card.style.backgroundSize = dataUrl ? 'cover' : '100% 100%';
-  card.style.backgroundPosition = 'center';
-  card.style.backgroundRepeat = 'no-repeat';
-}
-
-function bgRenderGrid() {
-  const grid = document.getElementById('bgGrid');
-  const empty = document.getElementById('bgEmpty');
-  const backgrounds = bgGetAll();
-
-  Array.from(grid.querySelectorAll('.bg-thumb-wrap')).forEach(node => node.remove());
-
-  if (!backgrounds.length) {
-    empty.style.display = '';
-    bgApply(null);
-    return;
-  }
-
-  empty.style.display = 'none';
-  backgrounds.forEach(background => {
-    const wrap = document.createElement('div');
-    wrap.className = 'bg-thumb-wrap';
-
-    const img = document.createElement('img');
-    img.className = `bg-thumb${background.id === bgActiveId ? ' selected' : ''}`;
-    img.src = background.dataUrl;
-    img.title = background.name;
-    img.onclick = () => {
-      bgActiveId = background.id;
-      bgApply(background.dataUrl);
-      bgRenderGrid();
-    };
-
-    const star = document.createElement('button');
-    star.className = `bg-thumb-star${background.isDefault ? ' is-default' : ''}${background.isBundled ? ' is-hidden' : ''}`;
-    star.type = 'button';
-    star.title = background.isDefault ? 'Default background' : 'Set as default';
-    star.textContent = '★';
-    star.onclick = async event => {
-      if (background.isBundled) return;
-      event.stopPropagation();
-      await bgClearDefault();
-      bgLibrary = bgLibrary.map(item => ({ ...item, isDefault: false }));
-      const target = bgLibrary.find(item => item.id === background.id);
-      if (target) {
-        target.isDefault = true;
-        await bgSave(target);
-      }
-      bgRenderGrid();
-    };
-
-    const del = document.createElement('button');
-    del.className = `bg-thumb-del${background.isBundled ? ' is-hidden' : ''}`;
-    del.type = 'button';
-    del.title = 'Remove';
-    del.textContent = '×';
-    del.onclick = async event => {
-      if (background.isBundled) return;
-      event.stopPropagation();
-      await bgDeleteDB(background.id);
-      bgLibrary = bgLibrary.filter(item => item.id !== background.id);
-      if (bgActiveId === background.id) {
-        bgActiveId = null;
-        bgApply(null);
-      }
-      bgRenderGrid();
-    };
-
-    wrap.append(img, star, del);
-    if (background.isBundled) {
-      const badge = document.createElement('span');
-      badge.className = 'bg-thumb-badge';
-      badge.textContent = 'Local';
-      wrap.appendChild(badge);
-    }
-    grid.appendChild(wrap);
-  });
-
-  const activeBg = backgrounds.find(item => item.id === bgActiveId) || bgLibrary[0];
-  if (activeBg) {
-    bgActiveId = activeBg.id;
-    bgApply(activeBg.dataUrl);
-  }
-}
-
-async function bgHandleUpload(files) {
-  let loaded = 0;
-  const total = files.length;
-  Array.from(files).forEach(file => {
-    const reader = new FileReader();
-    reader.onload = async event => {
-      const id = `bg_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-      const record = { id, name: file.name, dataUrl: event.target.result, isDefault: false };
-      bgLibrary.push(record);
-      await bgSave(record);
-      bgActiveId = id;
-      loaded += 1;
-      if (loaded === total) bgRenderGrid();
-    };
-    reader.readAsDataURL(file);
-  });
 }
 
 function getTemplateBase(template, headingScale) {
@@ -1268,7 +1040,12 @@ function renderStackedSections(fragment, sections, sizes, width, tableSpacing) {
     const columns = document.createElement('div');
     columns.className = 'stacked-columns';
     columns.style.fontSize = `${Math.round(sizes.thFz * .8)}px`;
-    columns.innerHTML = '<span>#</span><span>Stock</span><span>Time</span><span class="stacked-col-return">Return</span>';
+    columns.replaceChildren(
+      createTextSpan('', '#'),
+      createTextSpan('', 'Stock'),
+      createTextSpan('', 'Time'),
+      createTextSpan('stacked-col-return', 'Return')
+    );
     shell.appendChild(columns);
 
     section.rows.forEach((row, rowIndex) => {
@@ -1406,7 +1183,11 @@ function renderBoardSections(fragment, sections, sizes, width) {
     const head = document.createElement('div');
     head.className = 'board-head';
     head.style.fontSize = `${Math.round(sizes.thFz * .82)}px`;
-    head.innerHTML = '<span>Stock</span><span>Return</span><span>Time</span>';
+    head.replaceChildren(
+      createTextSpan('', 'Stock'),
+      createTextSpan('', 'Return'),
+      createTextSpan('', 'Time')
+    );
 
     const list = document.createElement('div');
     list.className = 'board-list';
@@ -1533,7 +1314,11 @@ function renderGlassSections(fragment, sections, sizes, width) {
     const head = document.createElement('div');
     head.className = 'glass-head';
     head.style.fontSize = `${Math.round(sizes.thFz * .82)}px`;
-    head.innerHTML = '<span>Stock</span><span>Return</span><span>Time</span>';
+    head.replaceChildren(
+      createTextSpan('', 'Stock'),
+      createTextSpan('', 'Return'),
+      createTextSpan('', 'Time')
+    );
 
     const body = document.createElement('div');
     body.className = 'glass-body';
@@ -1743,14 +1528,155 @@ function setTitlePaletteVars(card, theme, template) {
   card.style.setProperty('--title-main-shadow', palette.mainShadow || 'none');
 }
 
-function generate() {
-  clearTimeout(generateTimeout);
-  generateTimeout = setTimeout(doGenerate, 20);
+function readAppStateSnapshot() {
+  const getValue = id => {
+    const element = document.getElementById(id);
+    return element ? element.value : '';
+  };
+  const formatState = window.globalFormatState || {
+    primary: { b: true, i: false, u: false },
+    secondary: { b: false, i: false, u: false },
+    tertiary: { b: true, i: false, u: false }
+  };
+
+  return {
+    inputText: getValue('inputText'),
+    sebiReg: sanitizeDisplayText(getValue('sebiReg')),
+    disclaimer: getValue('disclaimer'),
+    fileName: getValue('fileName'),
+    exportFormat: getValue('exportFormat'),
+    cardFormat: getValue('cardFormat'),
+    cardWidth: getValue('cardWidth'),
+    overallScale: getValue('overallScale'),
+    headingScale: getValue('headingScale'),
+    tableSpacing: getValue('tableSpacing'),
+    tableBorder: getValue('tableBorder'),
+    fontFamily: getValue('fontFamily'),
+    activeTheme: getActiveTheme(),
+    activePreset: getSelectedTemplate(),
+    colorPrimary: getValue('colorPrimary'),
+    colorSecondary: getValue('colorSecondary'),
+    colorTertiary: getValue('colorTertiary'),
+    hexPrimary: getValue('hexPrimary'),
+    hexSecondary: getValue('hexSecondary'),
+    hexTertiary: getValue('hexTertiary'),
+    globalFormat: JSON.parse(JSON.stringify(formatState)),
+    customLogoData,
+    customLogoPos,
+    backgroundId: typeof window.getBackgroundSelection === 'function' ? window.getBackgroundSelection() : null,
+    watermarkEnabled: !!document.getElementById('watermarkToggle')?.checked,
+    watermarkText: getValue('watermarkText'),
+    footerText: getValue('footerText')
+  };
 }
 
-function doGenerate() {
+function persistAppStateSnapshot() {
+  clearTimeout(appStateSaveTimeout);
+  appStateSaveTimeout = setTimeout(() => {
+    try {
+      localStorage.setItem(APP_STATE_KEY, JSON.stringify(readAppStateSnapshot()));
+    } catch (_error) {
+      setAppNotice('Draft autosave is unavailable in this browser session.', 'error');
+    }
+  }, 120);
+}
+
+function recordHistorySnapshot(force = false) {
+  if (appStateHydrating) return;
+  const snapshot = JSON.stringify(readAppStateSnapshot());
+  const current = appHistory[appHistoryIndex];
+  if (!force && current === snapshot) return;
+
+  if (appHistoryIndex < appHistory.length - 1) {
+    appHistory = appHistory.slice(0, appHistoryIndex + 1);
+  }
+  appHistory.push(snapshot);
+  if (appHistory.length > APP_HISTORY_LIMIT) {
+    appHistory.shift();
+  } else {
+    appHistoryIndex += 1;
+  }
+  if (appHistory.length > APP_HISTORY_LIMIT) appHistoryIndex = appHistory.length - 1;
+  syncHistoryButtons();
+  try {
+    localStorage.setItem(APP_HISTORY_KEY, JSON.stringify({
+      entries: appHistory,
+      index: appHistoryIndex
+    }));
+  } catch (_error) {
+    // Undo/redo still works in-session if storage is unavailable.
+  }
+}
+
+function loadPersistedHistory() {
+  try {
+    const raw = localStorage.getItem(APP_HISTORY_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !Array.isArray(parsed.entries) || !parsed.entries.length) return null;
+    return {
+      entries: parsed.entries.slice(-APP_HISTORY_LIMIT),
+      index: Math.max(0, Math.min(Number(parsed.index) || parsed.entries.length - 1, parsed.entries.length - 1))
+    };
+  } catch (_error) {
+    return null;
+  }
+}
+
+function canUndoState() {
+  return appHistoryIndex > 0;
+}
+
+function canRedoState() {
+  return appHistoryIndex >= 0 && appHistoryIndex < appHistory.length - 1;
+}
+
+function syncHistoryButtons() {
+  const undoButton = document.getElementById('undoButton');
+  const redoButton = document.getElementById('redoButton');
+  if (undoButton) undoButton.disabled = !canUndoState();
+  if (redoButton) redoButton.disabled = !canRedoState();
+}
+
+function undoState() {
+  if (!canUndoState() || typeof window.applyAppStateSnapshot !== 'function') return;
+  appHistoryIndex -= 1;
+  window.applyAppStateSnapshot(JSON.parse(appHistory[appHistoryIndex]), { fromHistory: true });
+}
+
+function redoState() {
+  if (!canRedoState() || typeof window.applyAppStateSnapshot !== 'function') return;
+  appHistoryIndex += 1;
+  window.applyAppStateSnapshot(JSON.parse(appHistory[appHistoryIndex]), { fromHistory: true });
+}
+
+function generate() {
+  clearTimeout(generateTimeout);
+  generateTimeout = setTimeout(() => {
+    cancelAnimationFrame(generateFrame);
+    generateFrame = requestAnimationFrame(() => {
+      const runId = ++generateSerial;
+      latestGeneratePromise = (async () => {
+        try {
+          await doGenerate(runId);
+          if (runId !== generateSerial) return;
+          persistAppStateSnapshot();
+          recordHistorySnapshot();
+        } catch (error) {
+          if (runId !== generateSerial) return;
+          setAppNotice(`Something went wrong while rendering the preview: ${sanitizeDisplayText(error?.message || 'Unknown error')}`, 'error');
+        }
+      })();
+    });
+  }, 36);
+}
+
+async function doGenerate(runId) {
   const parser = getParserApi();
-  const parseModel = parser.parseInputModel(document.getElementById('inputText').value);
+  const inputText = document.getElementById('inputText').value;
+  const useAsyncParse = typeof parser.parseInputModelAsync === 'function' && inputText.split(/\r?\n/).length > 180;
+  const parseModel = useAsyncParse ? await parser.parseInputModelAsync(inputText, { chunkSize: 180 }) : parser.parseInputModel(inputText);
+  if (runId !== generateSerial) return;
   const sections = parseModel.sections;
   const template = getSelectedTemplate();
   const theme = getActiveTheme();
@@ -1776,6 +1702,8 @@ function doGenerate() {
   const titleBlock = document.getElementById('titleBlock');
   const sebiLine = document.getElementById('sebiLine');
   const disclaimerBlock = document.getElementById('disclaimerDisplay');
+  const watermarkBlock = document.getElementById('watermarkDisplay');
+  const footerBlock = document.getElementById('footerNoteDisplay');
   const container = document.getElementById('tablesContainer');
   const fragment = document.createDocumentFragment();
   const titleParts = getDisplayTitleParts(parseModel);
@@ -1804,7 +1732,7 @@ function doGenerate() {
     inner.style.height = 'auto';
   }
 
-  sebiLine.textContent = `SEBI Reg. : ${document.getElementById('sebiReg').value}`;
+  sebiLine.textContent = `SEBI Reg. : ${sanitizeDisplayText(document.getElementById('sebiReg').value)}`;
   sebiLine.style.fontSize = `${sizes.sebiFz}px`;
   sebiLine.style.marginBottom = `${sizes.sebiMb}px`;
   makeEditable(sebiLine);
@@ -1827,12 +1755,25 @@ function doGenerate() {
       return span;
     })()
   );
+  titleBlock.classList.toggle('is-compact', String(titleParts.main).length > 18 || String(titleParts.count).length > 2);
   makeEditable(titleBlock);
 
-  disclaimerBlock.textContent = document.getElementById('disclaimer').value;
+  disclaimerBlock.textContent = sanitizeDisplayText(document.getElementById('disclaimer').value, { multiline: true });
   disclaimerBlock.style.fontSize = `${sizes.discFz}px`;
   disclaimerBlock.style.marginTop = `${sizes.discMt}px`;
   makeEditable(disclaimerBlock);
+
+  const watermarkEnabled = document.getElementById('watermarkToggle')?.checked;
+  const watermarkText = sanitizeDisplayText(document.getElementById('watermarkText')?.value || '');
+  const footerText = sanitizeDisplayText(document.getElementById('footerText')?.value || '', { multiline: true });
+  if (watermarkBlock) {
+    watermarkBlock.textContent = watermarkEnabled && watermarkText ? watermarkText : '';
+    watermarkBlock.classList.toggle('is-hidden', !(watermarkEnabled && watermarkText));
+  }
+  if (footerBlock) {
+    footerBlock.textContent = footerText;
+    footerBlock.classList.toggle('is-hidden', !footerText);
+  }
 
   container.className = `template-container template-${template}`;
   container.innerHTML = '';
@@ -1860,113 +1801,7 @@ function doGenerate() {
   container.appendChild(fragment);
 
   requestAnimationFrame(syncPreviewAreaLayout);
-}
-
-function getExportFileName() {
-  let customName = document.getElementById('fileName').value.trim();
-  if (customName) return customName;
-  const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-  const date = new Date();
-  return `Univest_Profit_Report_${date.getDate()}_${months[date.getMonth()]}`;
-}
-
-function triggerCanvasDownload(canvas, fileName) {
-  const anchor = document.createElement('a');
-  anchor.download = `${fileName}.jpg`;
-  anchor.href = canvas.toDataURL('image/jpeg', 0.95);
-  anchor.click();
-}
-
-function waitForImages(root) {
-  const images = Array.from(root.querySelectorAll('img'));
-  return Promise.all(images.map(image => {
-    if (image.complete) return Promise.resolve();
-    return new Promise(resolve => {
-      image.addEventListener('load', resolve, { once: true });
-      image.addEventListener('error', resolve, { once: true });
-    });
-  }));
-}
-
-function copyComputedStyles(source, target) {
-  const computed = window.getComputedStyle(source);
-  for (let index = 0; index < computed.length; index += 1) {
-    const property = computed[index];
-    target.style.setProperty(property, computed.getPropertyValue(property), computed.getPropertyPriority(property));
-  }
-}
-
-function inlineCloneStyles(source, target) {
-  copyComputedStyles(source, target);
-  target.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
-  const sourceChildren = Array.from(source.children);
-  const targetChildren = Array.from(target.children);
-  for (let index = 0; index < sourceChildren.length; index += 1) {
-    inlineCloneStyles(sourceChildren[index], targetChildren[index]);
-  }
-}
-
-async function exportCardWithSvg(card, fileName) {
-  if (document.fonts?.ready) await document.fonts.ready;
-  await waitForImages(card);
-
-  const rect = card.getBoundingClientRect();
-  const width = Math.ceil(rect.width);
-  const height = Math.ceil(rect.height);
-  const scale = 2;
-
-  const clone = card.cloneNode(true);
-  inlineCloneStyles(card, clone);
-  clone.style.margin = '0';
-  clone.style.width = `${width}px`;
-  clone.style.height = `${height}px`;
-  clone.style.boxSizing = 'border-box';
-
-  const wrapper = document.createElement('div');
-  wrapper.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
-  wrapper.appendChild(clone);
-
-  const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="${width * scale}" height="${height * scale}" viewBox="0 0 ${width} ${height}">
-      <foreignObject width="100%" height="100%">
-        ${wrapper.outerHTML}
-      </foreignObject>
-    </svg>
-  `;
-
-  const image = new Image();
-  const source = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-
-  const canvas = document.createElement('canvas');
-  canvas.width = width * scale;
-  canvas.height = height * scale;
-  const context = canvas.getContext('2d');
-
-  await new Promise((resolve, reject) => {
-    image.onload = () => {
-      try {
-        context.drawImage(image, 0, 0, width * scale, height * scale);
-        resolve();
-      } catch (error) {
-        reject(error);
-      }
-    };
-    image.onerror = reject;
-    image.src = source;
-  });
-
-  triggerCanvasDownload(canvas, fileName);
-}
-
-async function download() {
-  const card = document.getElementById('card');
-  const fileName = getExportFileName();
-
-  try {
-    await exportCardWithSvg(card, fileName);
-  } catch (_error) {
-    alert('Export failed. Please try again after the preview finishes rendering.');
-  }
+  setExportStatus('Ready to export');
 }
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -1981,6 +1816,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const removeLogoBtn = document.getElementById('removeLogo');
   const isValidHex = value => /^#[0-9A-F]{6}$/i.test(value);
   const globalFormat = { primary: { b: true, i: false, u: false }, secondary: { b: false, i: false, u: false }, tertiary: { b: true, i: false, u: false } };
+  window.globalFormatState = globalFormat;
 
   function setActivePreset(template) {
     const safeTemplate = ACTIVE_TEMPLATES.includes(template) ? template : 'classic';
@@ -2029,8 +1865,98 @@ window.addEventListener('DOMContentLoaded', () => {
       document.querySelector(`.fmt-tog[data-cat="${category}"][data-fmt="i"]`).classList.toggle('active', value.i);
       document.querySelector(`.fmt-tog[data-cat="${category}"][data-fmt="u"]`).classList.toggle('active', value.u);
     });
+    window.globalFormatState = globalFormat;
     localStorage.setItem('globalFormat', JSON.stringify(globalFormat));
   }
+
+  function applyAppStateSnapshot(state, options = {}) {
+    if (!state || typeof state !== 'object') return;
+    appStateHydrating = true;
+
+    const setValue = (id, value) => {
+      const element = document.getElementById(id);
+      if (element && value !== undefined && value !== null) element.value = value;
+    };
+
+    try {
+      if (state.activeTheme) {
+        setThemeButtons(state.activeTheme);
+        applyThemePalette(state.activeTheme);
+      }
+      if (state.activePreset) setActivePreset(state.activePreset);
+
+      setValue('inputText', sanitizeDisplayText(state.inputText || '', { multiline: true }));
+      setValue('sebiReg', sanitizeDisplayText(state.sebiReg || ''));
+      setValue('disclaimer', state.disclaimer || '');
+      setValue('fileName', sanitizeDisplayText(state.fileName || ''));
+      setValue('exportFormat', state.exportFormat || 'jpg');
+      setValue('cardFormat', state.cardFormat || 'auto');
+      setValue('cardWidth', state.cardWidth || '600');
+      setValue('overallScale', state.overallScale || '100');
+      setValue('headingScale', state.headingScale || '90');
+      setValue('tableSpacing', state.tableSpacing || '100');
+      setValue('tableBorder', state.tableBorder || '1');
+      setValue('fontFamily', state.fontFamily || "'Segoe UI', system-ui, sans-serif");
+      setValue('watermarkText', sanitizeDisplayText(state.watermarkText || 'DRAFT'));
+      setValue('footerText', state.footerText || '');
+
+      if (state.colorPrimary) primaryColor.value = state.colorPrimary;
+      if (state.colorSecondary) secondaryColor.value = state.colorSecondary;
+      if (state.colorTertiary) tertiaryColor.value = state.colorTertiary;
+      if (state.hexPrimary) primaryHex.value = state.hexPrimary;
+      if (state.hexSecondary) secondaryHex.value = state.hexSecondary;
+      if (state.hexTertiary) tertiaryHex.value = state.hexTertiary;
+
+      updateColors(primaryColor);
+      updateColors(secondaryColor);
+      updateColors(tertiaryColor);
+
+      if (state.globalFormat) {
+        Object.keys(globalFormat).forEach(category => {
+          if (state.globalFormat[category]) {
+            Object.assign(globalFormat[category], state.globalFormat[category]);
+          }
+        });
+      }
+      syncFormats();
+
+      if (state.customLogoData !== undefined) {
+        customLogoData = state.customLogoData || null;
+        removeLogoBtn.style.display = customLogoData ? 'inline-flex' : 'none';
+      }
+      if (state.customLogoPos) {
+        customLogoPos = state.customLogoPos;
+        setValue('logoPos', customLogoPos);
+      }
+      if (state.watermarkEnabled !== undefined) {
+        const toggle = document.getElementById('watermarkToggle');
+        if (toggle) toggle.checked = !!state.watermarkEnabled;
+      }
+
+      const card = document.getElementById('card');
+      if (card) card.style.setProperty('--table-bw', `${document.getElementById('tableBorder').value}px`);
+      if (state.backgroundId && typeof window.setBackgroundSelection === 'function') {
+        window.setBackgroundSelection(state.backgroundId);
+      }
+
+      document.getElementById('cardWidthVal').textContent = `${document.getElementById('cardWidth').value}px`;
+      document.getElementById('overallScaleVal').textContent = `${document.getElementById('overallScale').value}%`;
+      document.getElementById('headingScaleVal').textContent = `${document.getElementById('headingScale').value}%`;
+      document.getElementById('tableSpacingVal').textContent = `${document.getElementById('tableSpacing').value}%`;
+      document.getElementById('tableBorderVal').textContent = `${document.getElementById('tableBorder').value}px`;
+
+      if (!options.silent) generate();
+      setAppNotice('Draft restored', 'success');
+    } finally {
+      appStateHydrating = false;
+      if (!options.fromHistory) {
+        appHistory = [];
+        appHistoryIndex = -1;
+      }
+    }
+  }
+
+  window.applyAppStateSnapshot = applyAppStateSnapshot;
 
   const savedPreset = localStorage.getItem('designPreset');
   if (savedPreset && document.querySelector(`.preset-btn[data-template="${savedPreset}"]`)) setActivePreset(savedPreset);
@@ -2057,48 +1983,33 @@ window.addEventListener('DOMContentLoaded', () => {
   if (savedFormatState) Object.assign(globalFormat, JSON.parse(savedFormatState));
   syncFormats();
 
-  bgOpenDB().then(async db => {
-    bgDB = db;
-    bgLibrary = await bgLoadAll();
-    const defaultBg = bgLibrary.find(item => item.isDefault);
-    if (defaultBg) bgActiveId = defaultBg.id;
-    bgRenderGrid();
-    generate();
-  }).catch(() => {
-    bgRenderGrid();
-    generate();
-  });
+  const persistedHistory = loadPersistedHistory();
+  if (persistedHistory) {
+    try {
+      appHistory = persistedHistory.entries.slice();
+      appHistoryIndex = Math.max(0, Math.min(persistedHistory.index, appHistory.length - 1));
+      applyAppStateSnapshot(JSON.parse(appHistory[appHistoryIndex]), { silent: true, fromHistory: true });
+    } catch (_error) {
+      setAppNotice('Saved history could not be restored cleanly.', 'error');
+      appHistory = [];
+      appHistoryIndex = -1;
+    }
+  }
+
+  const savedState = localStorage.getItem(APP_STATE_KEY);
+  if (!persistedHistory && savedState) {
+    try {
+      applyAppStateSnapshot(JSON.parse(savedState), { silent: true });
+    } catch (_error) {
+      setAppNotice('Saved draft could not be restored cleanly.', 'error');
+    }
+  }
 
   document.querySelectorAll('.preset-btn').forEach(button => {
     button.addEventListener('click', () => {
       setActivePreset(button.getAttribute('data-template'));
       generate();
     });
-  });
-
-  document.getElementById('bgUploadInput').addEventListener('change', function () {
-    if (this.files.length) bgHandleUpload(this.files);
-    this.value = '';
-  });
-
-  ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-    dropZone.addEventListener(eventName, event => {
-      event.preventDefault();
-      event.stopPropagation();
-    }, false);
-  });
-
-  ['dragenter', 'dragover'].forEach(eventName => {
-    dropZone.addEventListener(eventName, () => dropLabel.classList.add('drag-over'), false);
-  });
-
-  ['dragleave', 'drop'].forEach(eventName => {
-    dropZone.addEventListener(eventName, () => dropLabel.classList.remove('drag-over'), false);
-  });
-
-  dropZone.addEventListener('drop', event => {
-    const imageFiles = Array.from(event.dataTransfer.files).filter(file => file.type.startsWith('image/'));
-    if (imageFiles.length) bgHandleUpload(imageFiles);
   });
 
   [primaryColor, secondaryColor, tertiaryColor].forEach(input => {
@@ -2187,27 +2098,57 @@ window.addEventListener('DOMContentLoaded', () => {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = event => {
+      const raw = String(event.target.result || '').trim();
+      if (!raw) {
+        setAppNotice('CSV file was empty.', 'error');
+        return;
+      }
+
+      const lines = raw.split(/\r?\n/).filter(Boolean);
+      const detectDelimiter = line => {
+        const candidates = [',', ';', '\t', '|'];
+        return candidates.sort((a, b) => (line.split(b).length - 1) - (line.split(a).length - 1))[0];
+      };
+      const delimiter = detectDelimiter(lines[0] || ',');
+      const headerCells = (lines[0] || '').split(delimiter).map(cell => sanitizeDisplayText(cell).toLowerCase());
+      const hasHeaders = headerCells.some(cell => /(category|section|stock|name|profit|return|duration|time)/i.test(cell));
+      const columnIndex = keyPatterns => headerCells.findIndex(cell => keyPatterns.some(pattern => pattern.test(cell)));
+
+      const categoryIndex = hasHeaders ? columnIndex([/(category|section|type)/i]) : 0;
+      const stockIndex = hasHeaders ? columnIndex([/(stock|name|script|symbol)/i]) : 1;
+      const profitIndex = hasHeaders ? columnIndex([/(profit|return|returns|gain|amount|lot)/i]) : 2;
+      const durationIndex = hasHeaders ? columnIndex([/(duration|time|period|holding)/i]) : 3;
+      const startIndex = hasHeaders ? 1 : 0;
       let output = '';
       let currentCategory = '';
-      event.target.result.split('\n').forEach(line => {
-        const parts = line.split(',');
-        if (parts.length < 4) return;
-        const category = parts[0].trim().toUpperCase();
-        const stock = parts[1].trim();
-        const profit = parts[2].trim();
-        const duration = parts[3].trim();
-        if (!category || stock.toLowerCase() === 'stock name' || stock.toLowerCase() === 'stock') return;
+      let validRows = 0;
+
+      lines.slice(startIndex).forEach(line => {
+        const parts = line.split(delimiter).map(cell => cell.trim().replace(/^"|"$/g, ''));
+        if (parts.length < 3) return;
+        const category = sanitizeDisplayText(parts[categoryIndex >= 0 ? categoryIndex : 0] || '').toUpperCase();
+        const stock = sanitizeDisplayText(parts[stockIndex >= 0 ? stockIndex : 1] || '');
+        const profit = sanitizeDisplayText(parts[profitIndex >= 0 ? profitIndex : 2] || '');
+        const duration = sanitizeDisplayText(parts[durationIndex >= 0 ? durationIndex : 3] || '');
+        if (!category || !stock || !profit || !duration) return;
+        if (/^(category|section|stock|name|profit|return|returns|duration|time)$/i.test(category) || /^(category|section|stock|name|profit|return|returns|duration|time)$/i.test(stock)) return;
         if (category !== currentCategory) {
           if (currentCategory) output += '\n';
           output += `${category}:\n`;
           currentCategory = category;
         }
         output += `${stock}: ${profit} in ${duration}\n`;
+        validRows += 1;
       });
-      if (output) {
-        document.getElementById('inputText').value = output;
-        generate();
+
+      if (!validRows) {
+        setAppNotice('CSV did not contain recognizable trade rows.', 'error');
+        return;
       }
+
+      document.getElementById('inputText').value = output.trim();
+      setAppNotice(`Imported ${validRows} CSV row${validRows === 1 ? '' : 's'}.`, 'success');
+      generate();
     };
     reader.readAsText(file);
     this.value = '';
@@ -2237,6 +2178,51 @@ window.addEventListener('DOMContentLoaded', () => {
     applyReviewSuggestion(Number(button.getAttribute('data-review-index')));
   });
 
+  const undoButton = document.getElementById('undoButton');
+  const redoButton = document.getElementById('redoButton');
+  const exportStateButton = document.getElementById('exportStateButton');
+  const importStateButton = document.getElementById('importStateButton');
+  const stateImportInput = document.getElementById('stateImportInput');
+  const batchExportButton = document.getElementById('batchExportButton');
+
+  undoButton.addEventListener('click', undoState);
+  redoButton.addEventListener('click', redoState);
+
+  exportStateButton.addEventListener('click', () => {
+    const snapshot = readAppStateSnapshot();
+    const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json;charset=utf-8' });
+    downloadBlobFile(blob, `${sanitizeDisplayText(snapshot.fileName || 'profit_report_config') || 'profit_report_config'}.json`);
+    setAppNotice('Config exported successfully.', 'success');
+  });
+
+  importStateButton.addEventListener('click', () => stateImportInput.click());
+  stateImportInput.addEventListener('change', function () {
+    const file = this.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = event => {
+      try {
+        const imported = JSON.parse(event.target.result);
+        if (!imported || typeof imported !== 'object') throw new Error('Invalid config');
+        window.applyAppStateSnapshot(imported);
+        setAppNotice('Config imported successfully.', 'success');
+      } catch (_error) {
+        setAppNotice('Imported config file was invalid.', 'error');
+      }
+    };
+    reader.readAsText(file);
+    this.value = '';
+  });
+
+  batchExportButton.addEventListener('click', async () => {
+    if (typeof window.downloadBatch !== 'function') return;
+    await window.downloadBatch();
+  });
+
+  document.getElementById('watermarkToggle').addEventListener('change', generate);
+  document.getElementById('watermarkText').addEventListener('input', generate);
+  document.getElementById('footerText').addEventListener('input', generate);
+
   document.querySelectorAll('.tab-btn').forEach(button => {
     button.addEventListener('click', () => {
       document.querySelectorAll('.tab-btn').forEach(item => item.classList.remove('active'));
@@ -2245,6 +2231,34 @@ window.addEventListener('DOMContentLoaded', () => {
       document.getElementById(`tab-${button.getAttribute('data-tab')}`).classList.add('active');
     });
   });
+
+  document.addEventListener('keydown', event => {
+    const editingTarget = event.target?.closest?.('textarea, input, [contenteditable="true"]');
+    if (editingTarget) return;
+    if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === 'z' && !event.shiftKey) {
+      event.preventDefault();
+      undoState();
+    } else if ((event.ctrlKey || event.metaKey) && (event.key.toLowerCase() === 'y' || (event.shiftKey && event.key.toLowerCase() === 'z'))) {
+      event.preventDefault();
+      redoState();
+    }
+  });
+
+  window.addEventListener('error', event => {
+    const message = event?.error?.message || event?.message || 'An unexpected error occurred.';
+    setAppNotice(`Error: ${sanitizeDisplayText(message)}`, 'error');
+  });
+
+  window.addEventListener('unhandledrejection', event => {
+    const message = event?.reason?.message || event?.reason || 'A promise failed unexpectedly.';
+    setAppNotice(`Error: ${sanitizeDisplayText(message)}`, 'error');
+  });
+
+  let previewResizeRaf = 0;
+  window.addEventListener('resize', () => {
+    cancelAnimationFrame(previewResizeRaf);
+    previewResizeRaf = requestAnimationFrame(syncPreviewAreaLayout);
+  }, { passive: true });
 
   ['btnBold', 'btnItalic', 'btnUnderline'].forEach(id => {
     document.getElementById(id).addEventListener('mousedown', event => {
@@ -2265,4 +2279,8 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('tableSpacingVal').textContent = `${document.getElementById('tableSpacing').value}%`;
   document.getElementById('tableBorderVal').textContent = `${document.getElementById('tableBorder').value}px`;
   document.getElementById('card').style.setProperty('--table-bw', `${document.getElementById('tableBorder').value}px`);
+  appStateHydrating = false;
+  syncHistoryButtons();
+  setExportStatus('Ready to export');
+  generate();
 });

@@ -479,6 +479,93 @@
     }, { high: 0, medium: 0, low: 0 });
   }
 
+  function parseHiddenCount(value) {
+    const normalized = normalizeWhitespace(value);
+    const match = normalized.match(/^[+&]\s*(\d+)\s*(?:more(?:\s+trades?)?|hidden(?:\s+trades?)?|trades?)\b/i);
+    return match ? parseInt(match[1], 10) : 0;
+  }
+
+  function formatHiddenCount(count) {
+    const total = Math.max(0, Number(count) || 0);
+    return `+${total} hidden trade${total === 1 ? '' : 's'}`;
+  }
+
+  function buildTradeSignature(row) {
+    return [
+      normalizeTradeName(row.name),
+      normalizeWhitespace(row.returns).toUpperCase(),
+      normalizeWhitespace(row.duration).toUpperCase()
+    ].join('|');
+  }
+
+  function detectDuplicateRows(sections) {
+    const duplicateGroups = [];
+    const duplicateAnalyses = [];
+    const duplicateReviewItems = [];
+    let duplicateCount = 0;
+
+    sections.forEach(section => {
+      const seen = new Map();
+      section.rows.forEach((row, index) => {
+        const signature = buildTradeSignature(row);
+        const original = seen.get(signature);
+        if (!original) {
+          seen.set(signature, { row, index });
+          return;
+        }
+
+        duplicateCount += 1;
+        row.duplicate = true;
+        row.duplicateOf = original.index;
+        row.duplicateSignature = signature;
+
+        const originalLine = `${original.row.name} - ${original.row.returns} in ${original.row.duration}`;
+        const duplicateLine = `${row.name} - ${row.returns} in ${row.duration}`;
+        const mergeSuggestion = `Merge with ${originalLine}`;
+
+        let group = duplicateGroups.find(item => item.sectionName === section.name && item.signature === signature);
+        if (!group) {
+          group = {
+            sectionName: section.name,
+            signature,
+            originalLine,
+            duplicates: [],
+            count: 0
+          };
+          duplicateGroups.push(group);
+        }
+
+        group.count += 1;
+        group.duplicates.push(duplicateLine);
+
+        duplicateAnalyses.push({
+          rawLine: duplicateLine,
+          normalizedLine: originalLine,
+          kind: 'duplicate',
+          confidenceScore: 0.58,
+          confidenceLabel: 'medium',
+          sectionName: section.name,
+          reason: 'duplicate-row',
+          mergeSuggestion,
+          originalLine
+        });
+
+        duplicateReviewItems.push({
+          type: 'duplicate',
+          rawLine: duplicateLine,
+          sectionName: section.name,
+          confidenceLabel: 'medium',
+          confidenceScore: 0.58,
+          reason: 'duplicate-row',
+          mergeSuggestion,
+          originalLine
+        });
+      });
+    });
+
+    return { duplicateGroups, duplicateAnalyses, duplicateReviewItems, duplicateCount };
+  }
+
   function createSmartParser(options = {}) {
     const storage = options.storage || createMemoryStorage();
 
@@ -579,10 +666,12 @@
 
         const moreMatch = effectiveLine.replace(/\*/g, '').trim().match(/^[+&]\s*(\d+)\s+more/i);
         if (moreMatch && currentSection) {
-          ensureSection(currentSection).more = `+${moreMatch[1]} more`;
+          const hiddenCount = parseInt(moreMatch[1], 10) || 0;
+          ensureSection(currentSection).hiddenCount = hiddenCount;
+          ensureSection(currentSection).more = formatHiddenCount(hiddenCount);
           lineAnalyses.push({
             rawLine,
-            normalizedLine: `+${moreMatch[1]} more`,
+            normalizedLine: formatHiddenCount(hiddenCount),
             kind: 'meta',
             confidenceScore: 0.88,
             confidenceLabel: 'high',
@@ -684,13 +773,26 @@
         .sort((a, b) => (SECTION_ORDER[a.name] ?? 99) - (SECTION_ORDER[b.name] ?? 99));
 
       const meta = buildMetaFromPreamble(preambleLines);
-      const moreRows = sections.reduce((sum, section) => sum + (section.more ? parseInt(section.more, 10) || 0 : 0), 0);
-      const parsedRows = sections.reduce((sum, section) => sum + section.rows.length, 0) + moreRows;
+      const hiddenRows = sections.reduce((sum, section) => sum + (section.hiddenCount || parseHiddenCount(section.more) || 0), 0);
+      const visibleRows = sections.reduce((sum, section) => sum + section.rows.length, 0);
+      const parsedRows = visibleRows + hiddenRows;
+      const duplicateResult = detectDuplicateRows(sections);
+      lineAnalyses.push(...duplicateResult.duplicateAnalyses);
+      reviewItems.push(...duplicateResult.duplicateReviewItems);
+      const duplicateRows = duplicateResult.duplicateCount;
+      const uniqueRows = Math.max(0, parsedRows - duplicateRows);
       const dataAnalyses = lineAnalyses.filter(item => !['title', 'meta', 'header'].includes(item.kind));
       const confidence = dataAnalyses.length
         ? dataAnalyses.reduce((sum, item) => sum + item.confidenceScore, 0) / dataAnalyses.length
         : 0;
       const normalizedText = buildNormalizedText(meta, sections);
+      const tradeSummary = {
+        visibleRows,
+        hiddenRows,
+        duplicateRows,
+        uniqueRows,
+        parsedRows
+      };
 
       return {
         meta,
@@ -700,6 +802,228 @@
         lineAnalyses,
         lineStats: buildLineStats(dataAnalyses),
         parsedRows,
+        visibleRows,
+        hiddenRows,
+        duplicateRows,
+        uniqueRows,
+        tradeSummary,
+        confidence,
+        confidenceLabel: scoreToLabel(confidence),
+        normalizedText,
+        source: 'deterministic'
+      };
+    }
+
+    async function parseInputModelAsync(text, options = {}) {
+      const chunkSize = Math.max(50, Number(options.chunkSize) || 200);
+      const yieldToMain = () => new Promise(resolve => setTimeout(resolve, 0));
+      const learning = loadLearning();
+      const sectionsMap = new Map();
+      const preambleLines = [];
+      const lineAnalyses = [];
+      const reviewItems = [];
+      const unmatchedLines = [];
+      let currentSection = null;
+      let currentHeaderExplicit = false;
+
+      function ensureSection(name) {
+        if (!sectionsMap.has(name)) sectionsMap.set(name, { name, rows: [] });
+        return sectionsMap.get(name);
+      }
+
+      const lines = String(text || '').split('\n');
+      for (let index = 0; index < lines.length; index += 1) {
+        if (index > 0 && index % chunkSize === 0) await yieldToMain();
+
+        const rawLine = lines[index];
+        const cleaned = cleanInputLine(rawLine);
+        if (!cleaned) continue;
+
+        const learnedCorrection = learning.exactCorrections[cleaned];
+        const effectiveLine = learnedCorrection || cleaned;
+        const header = detectSectionHeader(effectiveLine.replace(/\*/g, '').trim(), learning);
+
+        if (header) {
+          currentSection = header.canonical;
+          currentHeaderExplicit = header.explicit;
+          const section = ensureSection(header.canonical);
+          if (header.expectedCount) section.expectedCount = header.expectedCount;
+          lineAnalyses.push({
+            rawLine,
+            normalizedLine: `${titleCaseLoose(header.canonical)}:`,
+            kind: 'header',
+            confidenceScore: header.explicit ? 0.98 : 0.9,
+            confidenceLabel: header.explicit ? 'high' : 'high',
+            sectionName: header.canonical,
+            reason: header.explicit ? 'explicit-header' : 'alias-header'
+          });
+          continue;
+        }
+
+        if (!currentSection) {
+          const titleMeta = extractTitleMeta(effectiveLine);
+          if (titleMeta) {
+            preambleLines.push(effectiveLine);
+            lineAnalyses.push({
+              rawLine,
+              normalizedLine: effectiveLine,
+              kind: 'title',
+              confidenceScore: 0.9,
+              confidenceLabel: 'high',
+              reason: 'title-meta'
+            });
+            continue;
+          }
+        }
+
+        const context = {
+          sectionHint: currentSection,
+          explicitSection: currentHeaderExplicit
+        };
+
+        const moreMatch = effectiveLine.replace(/\*/g, '').trim().match(/^[+&]\s*(\d+)\s+more/i);
+        if (moreMatch && currentSection) {
+          const hiddenCount = parseInt(moreMatch[1], 10) || 0;
+          ensureSection(currentSection).hiddenCount = hiddenCount;
+          ensureSection(currentSection).more = formatHiddenCount(hiddenCount);
+          lineAnalyses.push({
+            rawLine,
+            normalizedLine: formatHiddenCount(hiddenCount),
+            kind: 'meta',
+            confidenceScore: 0.88,
+            confidenceLabel: 'high',
+            sectionName: currentSection,
+            reason: 'more-indicator'
+          });
+          continue;
+        }
+
+        const fullRow = parseCompleteRow(effectiveLine.replace(/\*/g, '').trim(), context);
+        if (fullRow) {
+          ensureSection(fullRow.sectionName).rows.push(fullRow.row);
+          const normalizedCandidate = cleanInputLine(rawLine).replace(/^[*+\-]+\s*/, '').trim();
+          const analysis = {
+            rawLine,
+            normalizedLine: fullRow.normalizedLine,
+            kind: fullRow.kind,
+            confidenceScore: learnedCorrection ? 0.99 : fullRow.confidenceScore,
+            confidenceLabel: learnedCorrection ? 'high' : fullRow.confidenceLabel,
+            sectionName: fullRow.sectionName,
+            reason: learnedCorrection ? 'learned-correction' : fullRow.reason,
+            rawEffectiveLine: effectiveLine
+          };
+          lineAnalyses.push(analysis);
+          if (analysis.confidenceLabel !== 'high') {
+            reviewItems.push({
+              type: 'review',
+              rawLine,
+              sectionName: fullRow.sectionName,
+              suggestion: fullRow.normalizedLine,
+              confidenceLabel: analysis.confidenceLabel,
+              confidenceScore: analysis.confidenceScore,
+              reason: analysis.reason
+            });
+          } else if (!learnedCorrection && normalizedCandidate && normalizedCandidate !== fullRow.normalizedLine) {
+            reviewItems.push({
+              type: 'format',
+              rawLine,
+              sectionName: fullRow.sectionName,
+              suggestion: fullRow.normalizedLine,
+              confidenceLabel: 'high',
+              confidenceScore: analysis.confidenceScore,
+              reason: 'format-normalization'
+            });
+          }
+          continue;
+        }
+
+        const partialRow = parsePartialRow(effectiveLine.replace(/\*/g, '').trim(), context);
+        if (partialRow) {
+          ensureSection(partialRow.sectionName).rows.push(partialRow.row);
+          lineAnalyses.push({
+            rawLine,
+            normalizedLine: partialRow.normalizedLine,
+            kind: partialRow.kind,
+            confidenceScore: partialRow.confidenceScore,
+            confidenceLabel: partialRow.confidenceLabel,
+            sectionName: partialRow.sectionName,
+            reason: partialRow.reason
+          });
+          reviewItems.push({
+            type: 'partial',
+            rawLine,
+            sectionName: partialRow.sectionName,
+            suggestion: partialRow.suggestion,
+            confidenceLabel: partialRow.confidenceLabel,
+            confidenceScore: partialRow.confidenceScore,
+            reason: partialRow.reason
+          });
+          continue;
+        }
+
+        const suggestion = buildSuggestion(effectiveLine, 'unmatched');
+        const analysis = {
+          rawLine,
+          normalizedLine: suggestion || '',
+          kind: 'unmatched',
+          confidenceScore: 0.14,
+          confidenceLabel: 'low',
+          sectionName: currentSection || '',
+          reason: 'unmatched-line'
+        };
+        lineAnalyses.push(analysis);
+        unmatchedLines.push(rawLine);
+        reviewItems.push({
+          type: 'unmatched',
+          rawLine,
+          sectionName: currentSection || '',
+          suggestion,
+          confidenceLabel: 'low',
+          confidenceScore: 0.14,
+          reason: 'unmatched-line'
+        });
+        if (!currentSection) preambleLines.push(effectiveLine);
+      }
+
+      const sections = Array.from(sectionsMap.values())
+        .filter(section => section.rows.length)
+        .sort((a, b) => (SECTION_ORDER[a.name] ?? 99) - (SECTION_ORDER[b.name] ?? 99));
+
+      const meta = buildMetaFromPreamble(preambleLines);
+      const hiddenRows = sections.reduce((sum, section) => sum + (section.hiddenCount || parseHiddenCount(section.more) || 0), 0);
+      const visibleRows = sections.reduce((sum, section) => sum + section.rows.length, 0);
+      const parsedRows = visibleRows + hiddenRows;
+      const duplicateResult = detectDuplicateRows(sections);
+      lineAnalyses.push(...duplicateResult.duplicateAnalyses);
+      reviewItems.push(...duplicateResult.duplicateReviewItems);
+      const duplicateRows = duplicateResult.duplicateCount;
+      const uniqueRows = Math.max(0, parsedRows - duplicateRows);
+      const dataAnalyses = lineAnalyses.filter(item => !['title', 'meta', 'header'].includes(item.kind));
+      const confidence = dataAnalyses.length
+        ? dataAnalyses.reduce((sum, item) => sum + item.confidenceScore, 0) / dataAnalyses.length
+        : 0;
+      const normalizedText = buildNormalizedText(meta, sections);
+      const tradeSummary = {
+        visibleRows,
+        hiddenRows,
+        duplicateRows,
+        uniqueRows,
+        parsedRows
+      };
+
+      return {
+        meta,
+        sections,
+        unmatchedLines,
+        reviewItems,
+        lineAnalyses,
+        lineStats: buildLineStats(dataAnalyses),
+        parsedRows,
+        visibleRows,
+        hiddenRows,
+        duplicateRows,
+        uniqueRows,
+        tradeSummary,
         confidence,
         confidenceLabel: scoreToLabel(confidence),
         normalizedText,
@@ -709,6 +1033,7 @@
 
     return {
       parseInputModel,
+      parseInputModelAsync,
       parseInput(text) {
         return parseInputModel(text).sections;
       },

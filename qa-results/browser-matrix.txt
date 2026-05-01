@@ -1,0 +1,4 @@
+chrome: PASS (7 steps, 5 downloads, 4 screenshots)
+edge: PASS (7 steps, 5 downloads, 4 screenshots)
+firefox: PASS (7 steps, 5 downloads, 4 screenshots)
+webkit: PASS (7 steps, 5 downloads, 4 screenshots)

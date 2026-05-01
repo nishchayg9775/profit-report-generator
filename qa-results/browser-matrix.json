@@ -1,0 +1,150 @@
+[
+  {
+    "browser": "chrome",
+    "passed": true,
+    "errors": [],
+    "consoleErrors": [],
+    "steps": [
+      "loaded-default",
+      "parsed-rendered",
+      "configured-style",
+      "png-export",
+      "svg-export",
+      "tall-layout",
+      "tall-export-2"
+    ],
+    "downloads": [
+      "chrome-png-1.png",
+      "chrome-png-2.png",
+      "chrome-svg-1.svg",
+      "chrome-tall-1.png",
+      "chrome-tall-2.png"
+    ],
+    "screenshots": [
+      "C:\\Users\\DELL\\Desktop\\nishchay performance report generator\\profit-report-generator\\qa-snapshots\\chrome\\01-default.png",
+      "C:\\Users\\DELL\\Desktop\\nishchay performance report generator\\profit-report-generator\\qa-snapshots\\chrome\\02-parsed.png",
+      "C:\\Users\\DELL\\Desktop\\nishchay performance report generator\\profit-report-generator\\qa-snapshots\\chrome\\03-configured.png",
+      "C:\\Users\\DELL\\Desktop\\nishchay performance report generator\\profit-report-generator\\qa-snapshots\\chrome\\04-tall-layout.png"
+    ],
+    "screenshotCount": 4,
+    "exportArtifacts": [
+      "C:\\Users\\DELL\\Desktop\\nishchay performance report generator\\profit-report-generator\\qa-artifacts\\chrome-png-1.png",
+      "C:\\Users\\DELL\\Desktop\\nishchay performance report generator\\profit-report-generator\\qa-artifacts\\chrome-png-2.png",
+      "C:\\Users\\DELL\\Desktop\\nishchay performance report generator\\profit-report-generator\\qa-artifacts\\chrome-svg-1.svg",
+      "C:\\Users\\DELL\\Desktop\\nishchay performance report generator\\profit-report-generator\\qa-artifacts\\chrome-tall-1.png",
+      "C:\\Users\\DELL\\Desktop\\nishchay performance report generator\\profit-report-generator\\qa-artifacts\\chrome-tall-2.png"
+    ],
+    "hash": "2dde641a49d0ac4cc38d94d9d88987967b4d4a2a4a70134e6eac9cce07be9371"
+  },
+  {
+    "browser": "edge",
+    "passed": true,
+    "errors": [],
+    "consoleErrors": [],
+    "steps": [
+      "loaded-default",
+      "parsed-rendered",
+      "configured-style",
+      "png-export",
+      "svg-export",
+      "tall-layout",
+      "tall-export-2"
+    ],
+    "downloads": [
+      "edge-png-1.png",
+      "edge-png-2.png",
+      "edge-svg-1.svg",
+      "edge-tall-1.png",
+      "edge-tall-2.png"
+    ],
+    "screenshots": [
+      "C:\\Users\\DELL\\Desktop\\nishchay performance report generator\\profit-report-generator\\qa-snapshots\\edge\\01-default.png",
+      "C:\\Users\\DELL\\Desktop\\nishchay performance report generator\\profit-report-generator\\qa-snapshots\\edge\\02-parsed.png",
+      "C:\\Users\\DELL\\Desktop\\nishchay performance report generator\\profit-report-generator\\qa-snapshots\\edge\\03-configured.png",
+      "C:\\Users\\DELL\\Desktop\\nishchay performance report generator\\profit-report-generator\\qa-snapshots\\edge\\04-tall-layout.png"
+    ],
+    "screenshotCount": 4,
+    "exportArtifacts": [
+      "C:\\Users\\DELL\\Desktop\\nishchay performance report generator\\profit-report-generator\\qa-artifacts\\edge-png-1.png",
+      "C:\\Users\\DELL\\Desktop\\nishchay performance report generator\\profit-report-generator\\qa-artifacts\\edge-png-2.png",
+      "C:\\Users\\DELL\\Desktop\\nishchay performance report generator\\profit-report-generator\\qa-artifacts\\edge-svg-1.svg",
+      "C:\\Users\\DELL\\Desktop\\nishchay performance report generator\\profit-report-generator\\qa-artifacts\\edge-tall-1.png",
+      "C:\\Users\\DELL\\Desktop\\nishchay performance report generator\\profit-report-generator\\qa-artifacts\\edge-tall-2.png"
+    ],
+    "hash": "82b3845872b1bad4f56361dbb09fce29ef5ce799d105216cd7c323a15150435c"
+  },
+  {
+    "browser": "firefox",
+    "passed": true,
+    "errors": [],
+    "consoleErrors": [],
+    "steps": [
+      "loaded-default",
+      "parsed-rendered",
+      "configured-style",
+      "png-export",
+      "svg-export",
+      "tall-layout",
+      "tall-export-2"
+    ],
+    "downloads": [
+      "firefox-png-1.png",
+      "firefox-png-2.png",
+      "firefox-svg-1.svg",
+      "firefox-tall-1.png",
+      "firefox-tall-2.png"
+    ],
+    "screenshots": [
+      "C:\\Users\\DELL\\Desktop\\nishchay performance report generator\\profit-report-generator\\qa-snapshots\\firefox\\01-default.png",
+      "C:\\Users\\DELL\\Desktop\\nishchay performance report generator\\profit-report-generator\\qa-snapshots\\firefox\\02-parsed.png",
+      "C:\\Users\\DELL\\Desktop\\nishchay performance report generator\\profit-report-generator\\qa-snapshots\\firefox\\03-configured.png",
+      "C:\\Users\\DELL\\Desktop\\nishchay performance report generator\\profit-report-generator\\qa-snapshots\\firefox\\04-tall-layout.png"
+    ],
+    "screenshotCount": 4,
+    "exportArtifacts": [
+      "C:\\Users\\DELL\\Desktop\\nishchay performance report generator\\profit-report-generator\\qa-artifacts\\firefox-png-1.png",
+      "C:\\Users\\DELL\\Desktop\\nishchay performance report generator\\profit-report-generator\\qa-artifacts\\firefox-png-2.png",
+      "C:\\Users\\DELL\\Desktop\\nishchay performance report generator\\profit-report-generator\\qa-artifacts\\firefox-svg-1.svg",
+      "C:\\Users\\DELL\\Desktop\\nishchay performance report generator\\profit-report-generator\\qa-artifacts\\firefox-tall-1.png",
+      "C:\\Users\\DELL\\Desktop\\nishchay performance report generator\\profit-report-generator\\qa-artifacts\\firefox-tall-2.png"
+    ],
+    "hash": "b751f1a9d7e9e3e0c7e9fd4863a871adfd38bcb9bfa0e7dfa909bee617fdb1cf"
+  },
+  {
+    "browser": "webkit",
+    "passed": true,
+    "errors": [],
+    "consoleErrors": [],
+    "steps": [
+      "loaded-default",
+      "parsed-rendered",
+      "configured-style",
+      "png-export",
+      "svg-export",
+      "tall-layout",
+      "tall-export-2"
+    ],
+    "downloads": [
+      "webkit-png-1.png",
+      "webkit-png-2.png",
+      "webkit-svg-1.svg",
+      "webkit-tall-1.png",
+      "webkit-tall-2.png"
+    ],
+    "screenshots": [
+      "C:\\Users\\DELL\\Desktop\\nishchay performance report generator\\profit-report-generator\\qa-snapshots\\webkit\\01-default.png",
+      "C:\\Users\\DELL\\Desktop\\nishchay performance report generator\\profit-report-generator\\qa-snapshots\\webkit\\02-parsed.png",
+      "C:\\Users\\DELL\\Desktop\\nishchay performance report generator\\profit-report-generator\\qa-snapshots\\webkit\\03-configured.png",
+      "C:\\Users\\DELL\\Desktop\\nishchay performance report generator\\profit-report-generator\\qa-snapshots\\webkit\\04-tall-layout.png"
+    ],
+    "screenshotCount": 4,
+    "exportArtifacts": [
+      "C:\\Users\\DELL\\Desktop\\nishchay performance report generator\\profit-report-generator\\qa-artifacts\\webkit-png-1.png",
+      "C:\\Users\\DELL\\Desktop\\nishchay performance report generator\\profit-report-generator\\qa-artifacts\\webkit-png-2.png",
+      "C:\\Users\\DELL\\Desktop\\nishchay performance report generator\\profit-report-generator\\qa-artifacts\\webkit-svg-1.svg",
+      "C:\\Users\\DELL\\Desktop\\nishchay performance report generator\\profit-report-generator\\qa-artifacts\\webkit-tall-1.png",
+      "C:\\Users\\DELL\\Desktop\\nishchay performance report generator\\profit-report-generator\\qa-artifacts\\webkit-tall-2.png"
+    ],
+    "hash": "dac0860470bf63866a2515ebc47d336982cd5e10cb53c2890ce62313f5044262"
+  }
+]

@@ -22,6 +22,8 @@
         </div>
       </div>
 
+      <div class="app-notice" id="appNotice" aria-live="polite">Ready to export</div>
+
       <div class="panel-body">
         <div class="tab-pane active" id="tab-data">
           <div class="top-row">
@@ -286,6 +288,25 @@ NIFTY 50: 2.93% in 57 Mins</textarea>
               <p class="helper-text">Select text directly on the card and use these controls to style only that portion.</p>
             </div>
 
+            <div class="control-group full">
+              <div class="control-head">
+                <label>Draft Tools</label>
+                <div class="inline-actions">
+                  <input type="file" id="stateImportInput" accept="application/json" hidden>
+                  <button type="button" class="btn btn-secondary btn-compact" id="exportStateButton">Export Config</button>
+                  <button type="button" class="btn btn-secondary btn-compact" id="importStateButton">Import Config</button>
+                </div>
+              </div>
+              <div class="draft-grid">
+                <label class="switch-row">
+                  <input type="checkbox" id="watermarkToggle">
+                  <span>Show watermark</span>
+                </label>
+                <input type="text" id="watermarkText" placeholder="Watermark text" value="DRAFT">
+                <input type="text" id="footerText" placeholder="Custom footer text" value="">
+              </div>
+            </div>
+
             <div class="bg-picker control-group full">
               <label>Background Elements</label>
               <div class="file-upload" id="bgDropZone">
@@ -312,21 +333,39 @@ NIFTY 50: 2.93% in 57 Mins</textarea>
         <div class="control-group full">
           <input type="text" id="fileName" placeholder="Auto-generated file name on export">
         </div>
+        <div class="control-group full">
+          <label>Export Format</label>
+          <select id="exportFormat">
+            <option value="jpg" selected>JPG Image</option>
+            <option value="png">PNG Image</option>
+            <option value="svg">SVG Vector</option>
+          </select>
+        </div>
+        <div class="export-status" id="exportStatus" aria-live="polite">Ready to export</div>
         <div class="actions">
-          <button type="button" class="btn btn-primary" onclick="generate()">Calculate &amp; Render</button>
-          <button type="button" class="btn btn-download" onclick="download()">Export Design</button>
+          <button type="button" class="btn btn-secondary" id="undoButton">Undo</button>
+          <button type="button" class="btn btn-secondary" id="redoButton">Redo</button>
+          <button type="button" class="btn btn-primary" id="generateButton" onclick="generate()">Calculate &amp; Render</button>
+          <button type="button" class="btn btn-download" id="downloadButton" onclick="download()">Export Design</button>
+          <button type="button" class="btn btn-secondary" id="batchExportButton">Batch Export</button>
         </div>
       </div>
     </div>
   </div>
 
   <div class="preview-area">
-    <div class="card template-classic theme-dark" id="card">
-      <div class="card-inner" id="cardInner">
-        <div class="card-sebi" id="sebiLine"></div>
-        <div class="card-title" id="titleBlock"></div>
-        <div class="template-container template-classic" id="tablesContainer"></div>
-        <div class="card-disclaimer" id="disclaimerDisplay"></div>
+    <div class="preview-stage" id="previewStage">
+      <div class="preview-frame" id="previewFrame">
+        <div class="card template-classic theme-dark" id="card">
+          <div class="card-inner" id="cardInner">
+            <div class="card-sebi" id="sebiLine"></div>
+            <div class="card-title" id="titleBlock"></div>
+            <div class="template-container template-classic" id="tablesContainer"></div>
+            <div class="card-disclaimer" id="disclaimerDisplay"></div>
+            <div class="card-watermark is-hidden" id="watermarkDisplay"></div>
+            <div class="card-footer-note" id="footerNoteDisplay"></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -334,5 +373,9 @@ NIFTY 50: 2.93% in 57 Mins</textarea>
 
 <script src="smart-parser.js"></script>
 <script src="script.js"></script>
+<script src="ui.js"></script>
+<script src="backgrounds.js"></script>
+<script src="vendor/html2canvas.min.js"></script>
+<script src="export.js"></script>
 </body>
 </html>

@@ -8,7 +8,7 @@ function makeParser(extra = {}) {
   });
 }
 
-function run() {
+async function run() {
   {
     const parser = makeParser();
     const model = parser.parseInputModel(`*16TH APRIL - 11 PROFITS TILL NOW*
@@ -82,6 +82,25 @@ TCS 2.2% in 4 days`);
 
   {
     const parser = makeParser();
+    const model = parser.parseInputModel(`Equity:
+NEWGEN: 4.27% in 2 Days
+AFFLE: 3.01% in Same Day
+& 1 more trade
+NEWGEN: 4.27% in 2 Days`);
+    assert.equal(model.parsedRows, 4);
+    assert.equal(model.visibleRows, 3);
+    assert.equal(model.hiddenRows, 1);
+    assert.equal(model.duplicateRows, 1);
+    assert.equal(model.uniqueRows, 3);
+    assert.equal(model.sections[0].more, '+1 hidden trade');
+    const duplicate = model.reviewItems.find(item => item.type === 'duplicate');
+    assert.ok(duplicate);
+    assert.ok(duplicate.mergeSuggestion.includes('NEWGEN'));
+    assert.ok(model.lineStats.medium >= 1);
+  }
+
+  {
+    const parser = makeParser();
     parser.learnCorrection('TCS 2.2% in 4 days', 'TCS - 2.2% in 4 days');
     const model = parser.parseInputModel(`Equity:
 TCS 2.2% in 4 days`);
@@ -124,12 +143,20 @@ NIFTY CE - 10.4% in 25 mins`);
     assert.equal(model.lineStats.low, 0);
   }
 
+  {
+    const parser = makeParser();
+    const rows = Array.from({ length: 240 }, (_, index) => `TRADE${index + 1} - ${((index % 9) + 1).toFixed(2)}% in ${index % 5 + 1} days`).join('\n');
+    const model = await parser.parseInputModelAsync(`Equity:\n${rows}`);
+    assert.equal(model.sections[0].rows.length, 240);
+    assert.equal(model.parsedRows, 240);
+    assert.equal(model.visibleRows, 240);
+    assert.ok(model.confidence > 0.7);
+  }
+
   console.log('smart-parser tests passed');
 }
 
-try {
-  run();
-} catch (error) {
+run().catch(error => {
   console.error(error);
   process.exit(1);
-}
+});
