@@ -583,16 +583,16 @@ function updateSmartParseUI(parseModel) {
     detail.textContent = 'WhatsApp stars, plain sections, bullets, colons, hyphens, and futures amounts all get normalized here.';
     confidence.textContent = 'Waiting';
     confidence.dataset.state = 'idle';
-    chips.innerHTML = '';
+    chips.replaceChildren();
     if (statHigh) statHigh.textContent = '0';
     if (statMedium) statMedium.textContent = '0';
     if (statLow) statLow.textContent = '0';
     preview.value = '';
     if (normalizeButton) normalizeButton.disabled = true;
-    warningList.innerHTML = '';
+    warningList.replaceChildren();
     warningBox.classList.add('is-hidden');
     parseReviewExpanded = false;
-    reviewList.innerHTML = '';
+    reviewList.replaceChildren();
     reviewBox.classList.add('is-hidden');
     syncParseReviewUI(0);
     return;
@@ -616,31 +616,46 @@ function updateSmartParseUI(parseModel) {
   confidence.textContent = issueCount ? `${issueCount} to review` : `${Math.round((parseModel.confidence || 0) * 100)}% ready`;
   confidence.dataset.state = issueCount ? 'warn' : parseModel.parsedRows ? 'good' : 'idle';
 
-  chips.innerHTML = parseModel.sections
-    .map(section => `<span class="parse-chip">${titleCaseLoose(section.name)} <strong>${section.rows.length}</strong></span>`)
-    .join('');
+  chips.replaceChildren(...parseModel.sections.map(section => {
+    const chip = document.createElement('span');
+    chip.className = 'parse-chip';
+    chip.append(document.createTextNode(`${titleCaseLoose(section.name)} `));
+    const strong = document.createElement('strong');
+    strong.textContent = String(section.rows.length);
+    chip.appendChild(strong);
+    return chip;
+  }));
   if (statHigh) statHigh.textContent = String(parseModel.lineStats?.high || 0);
   if (statMedium) statMedium.textContent = String(parseModel.lineStats?.medium || 0);
   if (statLow) statLow.textContent = String(parseModel.lineStats?.low || 0);
 
   preview.value = parseModel.normalizedText;
   if (normalizeButton) normalizeButton.disabled = !parseModel.normalizedText;
-  warningList.innerHTML = parseModel.unmatchedLines
-    .slice(0, 6)
-    .map(line => `<div class="parse-warning-item">${line}</div>`)
-    .join('');
+  warningList.replaceChildren(...parseModel.unmatchedLines.slice(0, 6).map(line => createTextBlock('parse-warning-item', line)));
   warningBox.classList.toggle('is-hidden', !parseModel.unmatchedLines.length);
 
-  reviewList.innerHTML = (parseModel.reviewItems || [])
-    .map((item, index) => `
-      <div class="parse-review-item">
-        <div class="parse-review-line">${item.rawLine}</div>
-        <div class="parse-review-meta">${item.reason.replace(/-/g, ' ')} | ${item.confidenceLabel} confidence${item.sectionName ? ` | ${titleCaseLoose(item.sectionName)}` : ''}</div>
-        ${item.suggestion ? `<div class="parse-review-suggestion">Suggested: ${item.suggestion}</div>` : ''}
-        ${item.suggestion ? `<div class="parse-review-actions"><button type="button" class="btn btn-secondary btn-compact apply-suggestion-btn" data-review-index="${index}">Apply Suggestion</button></div>` : ''}
-      </div>
-    `)
-    .join('');
+  reviewList.replaceChildren(...(parseModel.reviewItems || []).map((item, index) => {
+    const review = document.createElement('div');
+    review.className = 'parse-review-item';
+    review.appendChild(createTextBlock('parse-review-line', item.rawLine));
+    review.appendChild(createTextBlock(
+      'parse-review-meta',
+      `${item.reason.replace(/-/g, ' ')} | ${item.confidenceLabel} confidence${item.sectionName ? ` | ${titleCaseLoose(item.sectionName)}` : ''}`
+    ));
+    if (item.suggestion) {
+      review.appendChild(createTextBlock('parse-review-suggestion', `Suggested: ${item.suggestion}`));
+      const actions = document.createElement('div');
+      actions.className = 'parse-review-actions';
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'btn btn-secondary btn-compact apply-suggestion-btn';
+      button.dataset.reviewIndex = String(index);
+      button.textContent = 'Apply Suggestion';
+      actions.appendChild(button);
+      review.appendChild(actions);
+    }
+    return review;
+  }));
   reviewBox.classList.toggle('is-hidden', !(parseModel.reviewItems || []).length);
   if (!(parseModel.reviewItems || []).length) parseReviewExpanded = false;
   syncParseReviewUI((parseModel.reviewItems || []).length);
@@ -758,6 +773,20 @@ function createEditableElement(tagName, className, text) {
   if (className) element.className = className;
   element.textContent = text;
   return makeEditable(element);
+}
+
+function createTextSpan(className, text) {
+  const element = document.createElement('span');
+  if (className) element.className = className;
+  element.textContent = text;
+  return element;
+}
+
+function createTextBlock(className, text) {
+  const element = document.createElement('div');
+  if (className) element.className = className;
+  element.textContent = text;
+  return element;
 }
 
 function createSectionMore(text, fontSize) {
@@ -1781,11 +1810,23 @@ function doGenerate() {
   makeEditable(sebiLine);
 
   titleBlock.style.marginBottom = `${Math.max(2, Math.round(sizes.titleMb * 0.72))}px`;
-  titleBlock.innerHTML = `
-    <span class="t-green title-count" style="font-size:${Math.round(sizes.titleFz * 1.28)}px">${titleParts.count}</span>
-    <span class="t-green title-lead" style="font-size:${Math.round(sizes.titleFz * 0.9)}px">${titleParts.leadWord}</span>
-    <span class="t-white title-main" style="font-size:${sizes.titleFz}px">${titleParts.main}</span>
-  `;
+  titleBlock.replaceChildren(
+    (() => {
+      const span = createTextSpan('t-green title-count', titleParts.count);
+      span.style.fontSize = `${Math.round(sizes.titleFz * 1.28)}px`;
+      return span;
+    })(),
+    (() => {
+      const span = createTextSpan('t-green title-lead', titleParts.leadWord);
+      span.style.fontSize = `${Math.round(sizes.titleFz * 0.9)}px`;
+      return span;
+    })(),
+    (() => {
+      const span = createTextSpan('t-white title-main', titleParts.main);
+      span.style.fontSize = `${sizes.titleFz}px`;
+      return span;
+    })()
+  );
   makeEditable(titleBlock);
 
   disclaimerBlock.textContent = document.getElementById('disclaimer').value;
@@ -1922,15 +1963,8 @@ async function download() {
   const fileName = getExportFileName();
 
   try {
-    if (typeof window.html2canvas === 'function') {
-      const canvas = await window.html2canvas(card, { scale: 2, backgroundColor: null, useCORS: true });
-      triggerCanvasDownload(canvas, fileName);
-      return;
-    }
-
     await exportCardWithSvg(card, fileName);
-  } catch (error) {
-    console.error('Export failed.', error);
+  } catch (_error) {
     alert('Export failed. Please try again after the preview finishes rendering.');
   }
 }
@@ -2030,8 +2064,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (defaultBg) bgActiveId = defaultBg.id;
     bgRenderGrid();
     generate();
-  }).catch(error => {
-    console.warn('IndexedDB init failed. Backgrounds will not persist.', error);
+  }).catch(() => {
     bgRenderGrid();
     generate();
   });
