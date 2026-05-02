@@ -258,6 +258,9 @@ async function runBrowser(entry, baseUrl) {
     await page.waitForTimeout(250);
     const svgEntries = await collectNewBlobEntries(page, svgBaseCount, artifactDir, name, 'svg');
     if (!svgEntries.some(entry => /svg/i.test(entry.type))) throw new Error(`${name} SVG export did not produce an svg blob`);
+    const svgMarkup = svgEntries.map(entry => entry.text || '').join('\n');
+    if (!/<text[\s>]/i.test(svgMarkup)) throw new Error(`${name} SVG export is not vector text-based`);
+    if (/<foreignObject/i.test(svgMarkup)) throw new Error(`${name} SVG export still contains foreignObject markup`);
     result.exportArtifacts.push(...svgEntries.map(entry => entry.path));
     downloadArtifacts.push(...svgEntries.map(entry => path.basename(entry.path)));
     result.steps.push('svg-export');
@@ -342,7 +345,7 @@ async function collectNewBlobEntries(page, startIndex, outputDir, browserName, l
       const base64 = String(entry.dataUrl || '').split(',')[1] || '';
       await fs.writeFile(filePath, Buffer.from(base64, 'base64'));
     }
-    saved.push({ path: filePath, type: entry.type, size: entry.size });
+    saved.push({ path: filePath, type: entry.type, size: entry.size, text: entry.text || '', dataUrl: entry.dataUrl || '' });
   }
   return saved;
 }

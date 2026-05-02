@@ -2183,7 +2183,6 @@ window.addEventListener('DOMContentLoaded', () => {
   const exportStateButton = document.getElementById('exportStateButton');
   const importStateButton = document.getElementById('importStateButton');
   const stateImportInput = document.getElementById('stateImportInput');
-  const batchExportButton = document.getElementById('batchExportButton');
 
   undoButton.addEventListener('click', undoState);
   redoButton.addEventListener('click', redoState);
@@ -2212,11 +2211,6 @@ window.addEventListener('DOMContentLoaded', () => {
     };
     reader.readAsText(file);
     this.value = '';
-  });
-
-  batchExportButton.addEventListener('click', async () => {
-    if (typeof window.downloadBatch !== 'function') return;
-    await window.downloadBatch();
   });
 
   document.getElementById('watermarkToggle').addEventListener('change', generate);
