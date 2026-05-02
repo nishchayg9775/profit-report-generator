@@ -91,6 +91,14 @@ function inlineCloneStyles(source, target) {
   }
 }
 
+function normalizeXhtmlFragment(markup) {
+  return String(markup || '')
+    .replace(/<(br|hr|img|input|meta|link|col|source|track|area|base|embed|param)([^>]*)>/gi, (full, tagName, attrs = '') => {
+      if (/\/>$/.test(full)) return full;
+      return `<${tagName}${attrs} />`;
+    });
+}
+
 async function buildCardSvgMarkup(card, scale = 1) {
   if (document.fonts?.ready) await document.fonts.ready;
   await waitForImages(card);
@@ -117,7 +125,7 @@ async function buildCardSvgMarkup(card, scale = 1) {
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${exportWidth}" height="${exportHeight}" viewBox="0 0 ${width} ${height}">
     <foreignObject width="100%" height="100%">
-      ${wrapper.outerHTML}
+      ${normalizeXhtmlFragment(wrapper.outerHTML)}
     </foreignObject>
   </svg>`;
 
@@ -190,7 +198,18 @@ function downloadCanvasBlob(canvas, fileName, mimeType, quality = 0.95) {
 }
 
 async function exportCardAsSvg(card, fileName) {
-  const { svg } = await buildCardSvgMarkup(card, 1);
+  const canvas = await renderCardCanvasWithHtml2Canvas(card, 2);
+  if (!canvas) {
+    throw new Error('SVG export requires a browser canvas renderer');
+  }
+
+  const pngDataUrl = canvas.toDataURL('image/png');
+  const width = canvas.width;
+  const height = canvas.height;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+    <image href="${pngDataUrl}" xlink:href="${pngDataUrl}" width="${width}" height="${height}" />
+  </svg>`;
+
   triggerSvgDownload(svg, fileName);
   return 1;
 }
