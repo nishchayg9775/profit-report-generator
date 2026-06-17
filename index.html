@@ -184,6 +184,12 @@ NIFTY 50: 2.93% in 57 Mins</textarea>
             </div>
 
             <div class="control-group full">
+              <label>SEBI / Heading Gap</label>
+              <input type="range" id="sebiSpacing" min="0" max="300" value="100" step="5">
+              <div class="range-val" id="sebiSpacingVal">100%</div>
+            </div>
+
+            <div class="control-group full">
               <label>Section Spacing</label>
               <input type="range" id="tableSpacing" min="50" max="200" value="100" step="5">
               <div class="range-val" id="tableSpacingVal">100%</div>
@@ -277,6 +283,16 @@ NIFTY 50: 2.93% in 57 Mins</textarea>
 
             <div class="control-group full">
               <label>Selective Text Rendering</label>
+              <div class="selection-inspector is-empty" id="selectionInspector">
+                <div class="selection-inspector-row">
+                  <span class="selection-inspector-pill selection-inspector-target" id="selectionTargetLabel">No text selected</span>
+                  <span class="selection-inspector-pill" id="selectionStyleSummary">Style: Regular</span>
+                </div>
+                <div class="selection-inspector-row selection-inspector-meta">
+                  <span class="selection-inspector-pill" id="selectionSizeSummary">Size: -</span>
+                  <span class="selection-inspector-pill" id="selectionColorSummary">Color: -</span>
+                </div>
+              </div>
               <div class="rich-toolbar">
                 <button type="button" id="btnBold" class="btn btn-secondary toolbar-btn" title="Bold">B</button>
                 <button type="button" id="btnItalic" class="btn btn-secondary toolbar-btn toolbar-italic" title="Italic">I</button>
@@ -284,8 +300,10 @@ NIFTY 50: 2.93% in 57 Mins</textarea>
                 <span class="toolbar-divider"></span>
                 <input type="color" id="highlightColor" value="#ffeb3b" title="Text Color">
                 <button type="button" id="btnHighlight" class="btn btn-secondary btn-compact">Apply Color</button>
+                <input type="number" id="selectionFontSize" class="toolbar-size-input" min="8" max="240" step="1" value="24" title="Text Size (px)" placeholder="Size">
+                <button type="button" id="btnTextSize" class="btn btn-secondary btn-compact">Apply Size</button>
               </div>
-              <p class="helper-text">Select text directly on the card and use these controls to style only that portion.</p>
+              <p class="helper-text">Card par text select karte hi uski current properties yahan dikhengi. Color, size aur style ko Photoshop ki tarah selected portion par hi change karein.</p>
             </div>
 
             <div class="control-group full">

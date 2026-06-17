@@ -164,10 +164,10 @@
     if (/^\d+(?:\.\d+)?$/.test(numeric)) {
       const [whole, fraction] = numeric.split('.');
       const formatted = Number(whole).toLocaleString('en-IN') + (fraction ? `.${fraction}` : '');
-      return `${sign}Rs. ${formatted}`;
+      return `${sign}\u20B9${formatted}`;
     }
 
-    return `${sign}Rs. ${normalized}`.trim();
+    return `${sign}\u20B9${normalized}`.trim();
   }
 
   function isCurrencyReturn(value, sectionName) {
@@ -487,7 +487,7 @@
 
   function formatHiddenCount(count) {
     const total = Math.max(0, Number(count) || 0);
-    return `+${total} hidden trade${total === 1 ? '' : 's'}`;
+    return `+${total} more trade${total === 1 ? '' : 's'}`;
   }
 
   function buildTradeSignature(row) {

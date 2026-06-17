@@ -47,6 +47,7 @@ NATIONALUM - Rs 15750 per lot in 1 day`);
     assert.equal(model.sections.find(section => section.name === 'EQUITY').rows.length, 2);
     assert.equal(model.sections.find(section => section.name === 'OPTIONS').rows.length, 1);
     assert.equal(model.sections.find(section => section.name === 'FUTURES').rows.length, 1);
+    assert.equal(model.sections.find(section => section.name === 'FUTURES').rows[0].returns, '₹15,750');
     assert.ok(model.lineStats.medium >= 1);
   }
 
@@ -92,7 +93,7 @@ NEWGEN: 4.27% in 2 Days`);
     assert.equal(model.hiddenRows, 1);
     assert.equal(model.duplicateRows, 1);
     assert.equal(model.uniqueRows, 3);
-    assert.equal(model.sections[0].more, '+1 hidden trade');
+    assert.equal(model.sections[0].more, '+1 more trade');
     const duplicate = model.reviewItems.find(item => item.type === 'duplicate');
     assert.ok(duplicate);
     assert.ok(duplicate.mergeSuggestion.includes('NEWGEN'));

@@ -200,11 +200,11 @@ function normalizeParsedReturn(returns, sectionName) {
     if (/^\d+(?:\.\d+)?$/.test(numeric)) {
       const [whole, fraction] = numeric.split('.');
       const formatted = Number(whole).toLocaleString('en-IN') + (fraction ? `.${fraction}` : '');
-      return `${sign}Rs. ${formatted}`;
+      return `${sign}\u20B9${formatted}`;
     }
 
     const stripped = compact.replace(/^[^\d-]+/, '').trim();
-    return `${sign}Rs. ${stripped || compact}`.trim();
+    return `${sign}\u20B9${stripped || compact}`.trim();
   }
 
   if (!normalized.includes('%')) return `${normalized}%`;
@@ -324,10 +324,10 @@ function normalizeParsedReturn(returns, sectionName) {
     if (/^\d+(?:\.\d+)?$/.test(numeric)) {
       const [whole, fraction] = numeric.split('.');
       const formatted = Number(whole).toLocaleString('en-IN') + (fraction ? `.${fraction}` : '');
-      return `${sign}Rs. ${formatted}`;
+      return `${sign}\u20B9${formatted}`;
     }
 
-    return `${sign}Rs. ${normalized}`.trim();
+    return `${sign}\u20B9${normalized}`.trim();
   }
 
   normalized = normalized.replace(/\bpercent\b/ig, '%').trim();
@@ -829,29 +829,42 @@ function estimateGridHeight(itemHeights, columns, gap) {
   return total;
 }
 
-function estimateNaturalHeight(template, sections, width, headingScale, tableSpacing = 1) {
+function getEffectiveSectionSpacing(rawValue) {
+  const normalized = Math.max(0.5, Math.min(2, Number(rawValue) || 1));
+  if (normalized <= 1) return 0.2 + normalized * 0.8;
+  return 1 + (normalized - 1) * 2.8;
+}
+
+function getEffectiveHeaderSpacing(rawValue) {
+  const normalized = Math.max(0, Math.min(3, Number(rawValue) || 1));
+  if (normalized <= 1) return normalized;
+  return 1 + (normalized - 1) * 3.2;
+}
+
+function estimateNaturalHeight(template, sections, width, headingScale, tableSpacing = 1, headerSpacing = 1) {
   const base = getTemplateBase(template, headingScale);
   const px = fraction => fraction * width;
   const totalRows = sections.reduce((sum, section) => sum + section.rows.length + (section.more ? parseInt(section.more, 10) : 0), 0);
   const sectionGap = px(base.secMt) * tableSpacing;
+  const headerGap = px(base.sebiMb) * headerSpacing;
 
   if (template === 'spotlight') {
     const sectionHeight = sections.reduce((sum, section) => sum + px(base.shellPad) * 2 + px(base.secFz) + px(base.thFz) + px(base.thPad) * 2 + section.rows.length * (px(base.tdFz) + px(base.tdPad) * 2) + (section.more ? px(base.tdFz) * 1.2 : sectionGap * .4) + sectionGap, 0);
-    return px(base.padTB) * 2 + px(base.sebiFz) + px(base.sebiMb) + px(base.titleFz) * 1.08 + px(base.titleMb) + sectionHeight + px(base.discFz) * 3.1 + px(base.discMt);
+    return px(base.padTB) * 2 + px(base.sebiFz) + headerGap + px(base.titleFz) * 1.08 + px(base.titleMb) + sectionHeight + px(base.discFz) * 3.1 + px(base.discMt);
   }
 
   if (template === 'board') {
     const columns = getPresetGridColumns(template, width, sections.length);
     const sectionHeights = sections.map(section => px(base.shellPad) * 2.1 + px(base.secFz) * 1.12 + px(base.thFz) * 1.25 + section.rows.length * (px(base.tdFz) * 1.3 + px(base.tdPad) * 2) + (section.more ? px(base.tdFz) * .96 : px(base.secMt) * .3));
     const gridHeight = estimateGridHeight(sectionHeights, columns, sectionGap);
-    return px(base.padTB) * 2 + px(base.sebiFz) + px(base.sebiMb) + px(base.titleFz) * 1.05 + px(base.titleMb) + gridHeight + px(base.discFz) * 2.9 + px(base.discMt);
+    return px(base.padTB) * 2 + px(base.sebiFz) + headerGap + px(base.titleFz) * 1.05 + px(base.titleMb) + gridHeight + px(base.discFz) * 2.9 + px(base.discMt);
   }
 
   if (template === 'stacked') {
     const columns = getStackedColumnCount(width, sections.length);
     const sectionHeights = sections.map(section => px(base.shellPad) * 2 + px(base.secFz) + px(base.thFz) * 1.8 + section.rows.length * (px(base.tdFz) * 1.12 + px(base.tdPad) * 2) + (section.more ? px(base.tdFz) * 1.1 : px(base.secMt) * .35));
     const gridHeight = estimateGridHeight(sectionHeights, columns, sectionGap);
-    return px(base.padTB) * 2 + px(base.sebiFz) + px(base.sebiMb) + px(base.titleFz) * 1.05 + px(base.titleMb) + gridHeight + px(base.discFz) * 3.1 + px(base.discMt);
+    return px(base.padTB) * 2 + px(base.sebiFz) + headerGap + px(base.titleFz) * 1.05 + px(base.titleMb) + gridHeight + px(base.discFz) * 3.1 + px(base.discMt);
   }
 
   if (template === 'tagged') {
@@ -861,43 +874,43 @@ function estimateNaturalHeight(template, sections, width, headingScale, tableSpa
       return px(base.shellPad) * 1.95 + px(base.secFz) * 1.1 + px(base.titleFz) * .52 + listCount * (px(base.tdFz) * .96 + px(base.tdPad) * 1.28) + px(base.tdFz) * 1.1 + (section.more ? px(base.tdFz) * .72 : px(base.secMt) * .18);
     });
     const gridHeight = estimateGridHeight(sectionHeights, columns, sectionGap * .7) + (columns > 1 ? sectionGap * .3 : 0);
-    return px(base.padTB) * 2 + px(base.sebiFz) + px(base.sebiMb) + px(base.titleFz) * 1.04 + px(base.titleMb) + gridHeight + px(base.discFz) * 2.9 + px(base.discMt);
+    return px(base.padTB) * 2 + px(base.sebiFz) + headerGap + px(base.titleFz) * 1.04 + px(base.titleMb) + gridHeight + px(base.discFz) * 2.9 + px(base.discMt);
   }
 
   if (template === 'ribbon') {
     const columns = getPresetGridColumns(template, width, sections.length);
     const sectionHeights = sections.map(section => px(base.shellPad) * 2.2 + px(base.secFz) + section.rows.length * (px(base.tdFz) * 1.48 + px(base.tdPad) * 2.2) + (section.more ? px(base.tdFz) * 1.1 : px(base.secMt) * .4));
     const gridHeight = estimateGridHeight(sectionHeights, columns, sectionGap);
-    return px(base.padTB) * 2 + px(base.sebiFz) + px(base.sebiMb) + px(base.titleFz) * 1.05 + px(base.titleMb) + gridHeight + px(base.discFz) * 3 + px(base.discMt);
+    return px(base.padTB) * 2 + px(base.sebiFz) + headerGap + px(base.titleFz) * 1.05 + px(base.titleMb) + gridHeight + px(base.discFz) * 3 + px(base.discMt);
   }
 
   if (template === 'glass') {
     const columns = getPresetGridColumns(template, width, sections.length);
     const sectionHeights = sections.map(section => px(base.shellPad) * 2.3 + px(base.secFz) * 1.15 + px(base.thFz) * 1.35 + section.rows.length * (px(base.tdFz) * 1.36 + px(base.tdPad) * 2.05) + (section.more ? px(base.tdFz) * 1.08 : px(base.secMt) * .35));
     const gridHeight = estimateGridHeight(sectionHeights, columns, sectionGap);
-    return px(base.padTB) * 2 + px(base.sebiFz) + px(base.sebiMb) + px(base.titleFz) * 1.05 + px(base.titleMb) + gridHeight + px(base.discFz) * 3 + px(base.discMt);
+    return px(base.padTB) * 2 + px(base.sebiFz) + headerGap + px(base.titleFz) * 1.05 + px(base.titleMb) + gridHeight + px(base.discFz) * 3 + px(base.discMt);
   }
 
   if (template === 'pillars') {
     const columns = getPresetGridColumns(template, width, sections.length);
     const sectionHeights = sections.map(section => px(base.shellPad) * 2.8 + px(base.secFz) * 1.55 + section.rows.length * (px(base.tdFz) * 1.34 + px(base.tdPad) * 1.8) + (section.more ? px(base.tdFz) * 1.05 : px(base.secMt) * .32));
     const gridHeight = estimateGridHeight(sectionHeights, columns, sectionGap);
-    return px(base.padTB) * 2 + px(base.sebiFz) + px(base.sebiMb) + px(base.titleFz) * 1.03 + px(base.titleMb) + gridHeight + px(base.discFz) * 3 + px(base.discMt);
+    return px(base.padTB) * 2 + px(base.sebiFz) + headerGap + px(base.titleFz) * 1.03 + px(base.titleMb) + gridHeight + px(base.discFz) * 3 + px(base.discMt);
   }
 
   if (template === 'ledger') {
     const sectionHeight = sections.reduce((sum, section) => sum + px(base.shellPad) * 1.7 + px(base.secFz) + px(base.thFz) + px(base.thPad) * 1.6 + section.rows.length * (px(base.tdFz) * 1.02 + px(base.tdPad) * 1.7) + (section.more ? px(base.tdFz) * .95 : sectionGap * .24) + sectionGap * .65, 0);
-    return px(base.padTB) * 2 + px(base.sebiFz) + px(base.sebiMb) + px(base.titleFz) * 1.02 + px(base.titleMb) + sectionHeight + px(base.discFz) * 2.8 + px(base.discMt);
+    return px(base.padTB) * 2 + px(base.sebiFz) + headerGap + px(base.titleFz) * 1.02 + px(base.titleMb) + sectionHeight + px(base.discFz) * 2.8 + px(base.discMt);
   }
 
   if (template === 'mono') {
     const columns = getPresetGridColumns(template, width, sections.length);
     const sectionHeights = sections.map(section => px(base.shellPad) * 2 + px(base.secFz) + section.rows.length * (px(base.tdFz) * 1.2 + px(base.tdPad) * 1.9) + (section.more ? px(base.tdFz) : px(base.secMt) * .32));
     const gridHeight = estimateGridHeight(sectionHeights, columns, sectionGap);
-    return px(base.padTB) * 2 + px(base.sebiFz) + px(base.sebiMb) + px(base.titleFz) * 1.03 + px(base.titleMb) + gridHeight + px(base.discFz) * 2.9 + px(base.discMt);
+    return px(base.padTB) * 2 + px(base.sebiFz) + headerGap + px(base.titleFz) * 1.03 + px(base.titleMb) + gridHeight + px(base.discFz) * 2.9 + px(base.discMt);
   }
 
-  return px(base.padTB) * 2 + px(base.sebiFz) + px(base.sebiMb) + px(base.titleFz) * 1.1 + px(base.titleMb) + sections.length * (px(base.secFz) + sectionGap + px(base.secMb) + px(base.thFz) + px(base.thPad) * 2) + totalRows * (px(base.tdFz) + px(base.tdPad) * 2) + px(base.discFz) * 3 + px(base.discMt);
+  return px(base.padTB) * 2 + px(base.sebiFz) + headerGap + px(base.titleFz) * 1.1 + px(base.titleMb) + sections.length * (px(base.secFz) + sectionGap + px(base.secMb) + px(base.thFz) + px(base.thPad) * 2) + totalRows * (px(base.tdFz) + px(base.tdPad) * 2) + px(base.discFz) * 3 + px(base.discMt);
 }
 
 function buildSizeMap(base, width, scale) {
@@ -957,21 +970,22 @@ function buildDataTable(headers, rows, sizes, horizontalPad, options = {}) {
 
 function renderClassicSections(fragment, sections, sizes, tableSpacing, horizontalPad) {
   sections.forEach(section => {
+    const sectionGap = Math.max(2, Math.round(sizes.secMt * tableSpacing));
     const label = createEditableElement('div', 'card-section', section.name);
     label.style.fontSize = `${sizes.secFz}px`;
-    label.style.marginTop = `${Math.max(4, Math.round(sizes.secMt * tableSpacing * 0.72))}px`;
-    label.style.marginBottom = `${Math.max(2, Math.round(sizes.secMb * 0.75))}px`;
+    label.style.marginTop = `${sectionGap}px`;
+    label.style.marginBottom = `${Math.max(2, Math.round(sizes.secMb * (0.8 + tableSpacing * 0.28)))}px`;
     fragment.appendChild(label);
 
     const headers = COL_HEADERS[section.name] || COL_HEADERS.EQUITY;
     const table = buildDataTable(headers, section.rows, sizes, horizontalPad);
-    table.style.marginBottom = section.more ? '0px' : `${Math.max(2, Math.round(sizes.secMt * Math.max(tableSpacing - 1, 0) * 0.45))}px`;
+    table.style.marginBottom = section.more ? '0px' : `${Math.max(2, Math.round(sectionGap * 0.58))}px`;
     fragment.appendChild(table);
 
     if (section.more) {
       const more = createSectionMore(section.more, Math.round(sizes.tdFz * .78));
-      more.style.marginTop = `${Math.max(2, Math.round(sizes.tdPad * .45))}px`;
-      more.style.marginBottom = `${Math.max(4, Math.round(sizes.secMt * tableSpacing * 0.68))}px`;
+      more.style.marginTop = `${Math.max(2, Math.round(sizes.tdPad * (0.45 + tableSpacing * 0.24)))}px`;
+      more.style.marginBottom = `${Math.max(2, Math.round(sectionGap * 0.92))}px`;
       fragment.appendChild(more);
     }
   });
@@ -1549,6 +1563,7 @@ function readAppStateSnapshot() {
     cardWidth: getValue('cardWidth'),
     overallScale: getValue('overallScale'),
     headingScale: getValue('headingScale'),
+    sebiSpacing: getValue('sebiSpacing'),
     tableSpacing: getValue('tableSpacing'),
     tableBorder: getValue('tableBorder'),
     fontFamily: getValue('fontFamily'),
@@ -1560,6 +1575,8 @@ function readAppStateSnapshot() {
     hexPrimary: getValue('hexPrimary'),
     hexSecondary: getValue('hexSecondary'),
     hexTertiary: getValue('hexTertiary'),
+    selectedTextColor: getValue('highlightColor') || '#ffeb3b',
+    selectedTextSize: getValue('selectionFontSize') || '24',
     globalFormat: JSON.parse(JSON.stringify(formatState)),
     customLogoData,
     customLogoPos,
@@ -1683,10 +1700,11 @@ async function doGenerate(runId) {
   const width = parseInt(document.getElementById('cardWidth').value, 10);
   const userScale = parseInt(document.getElementById('overallScale').value, 10) / 100;
   const headingScale = parseInt(document.getElementById('headingScale').value, 10) / 100;
-  const tableSpacing = parseInt(document.getElementById('tableSpacing').value, 10) / 100;
+  const headerSpacing = getEffectiveHeaderSpacing(parseInt(document.getElementById('sebiSpacing').value, 10) / 100);
+  const tableSpacing = getEffectiveSectionSpacing(parseInt(document.getElementById('tableSpacing').value, 10) / 100);
   const format = document.getElementById('cardFormat').value;
   const totalRows = parseModel.parsedRows;
-  const naturalHeight = estimateNaturalHeight(template, sections, width, headingScale, tableSpacing);
+  const naturalHeight = estimateNaturalHeight(template, sections, width, headingScale, tableSpacing, headerSpacing);
   const borderWeight = document.getElementById('tableBorder').value;
   let formatMaxHeight = width * 1.25;
   if (format === '1:1') formatMaxHeight = width;
@@ -1734,7 +1752,7 @@ async function doGenerate(runId) {
 
   sebiLine.textContent = `SEBI Reg. : ${sanitizeDisplayText(document.getElementById('sebiReg').value)}`;
   sebiLine.style.fontSize = `${sizes.sebiFz}px`;
-  sebiLine.style.marginBottom = `${sizes.sebiMb}px`;
+  sebiLine.style.marginBottom = `${Math.max(0, Math.round(sizes.sebiMb * headerSpacing))}px`;
   makeEditable(sebiLine);
 
   titleBlock.style.marginBottom = `${Math.max(2, Math.round(sizes.titleMb * 0.72))}px`;
@@ -1799,6 +1817,9 @@ async function doGenerate(runId) {
   else renderClassicSections(fragment, sections, sizes, tableSpacing, horizontalPad);
 
   container.appendChild(fragment);
+  if (typeof window.clearSelectiveTextSelection === 'function') {
+    window.clearSelectiveTextSelection();
+  }
 
   requestAnimationFrame(syncPreviewAreaLayout);
   setExportStatus('Ready to export');
@@ -1811,6 +1832,340 @@ window.addEventListener('DOMContentLoaded', () => {
   const primaryHex = document.getElementById('hexPrimary');
   const secondaryHex = document.getElementById('hexSecondary');
   const tertiaryHex = document.getElementById('hexTertiary');
+  const cardElement = document.getElementById('card');
+  const selectionColorInput = document.getElementById('highlightColor');
+  const selectionFontSizeInput = document.getElementById('selectionFontSize');
+  const selectionInspector = document.getElementById('selectionInspector');
+  const selectionTargetLabel = document.getElementById('selectionTargetLabel');
+  const selectionStyleSummary = document.getElementById('selectionStyleSummary');
+  const selectionSizeSummary = document.getElementById('selectionSizeSummary');
+  const selectionColorSummary = document.getElementById('selectionColorSummary');
+  const selectionBoldButton = document.getElementById('btnBold');
+  const selectionItalicButton = document.getElementById('btnItalic');
+  const selectionUnderlineButton = document.getElementById('btnUnderline');
+  const selectionApplyColorButton = document.getElementById('btnHighlight');
+  const selectionApplySizeButton = document.getElementById('btnTextSize');
+  let savedCardSelection = null;
+  let selectionSizeApplyTimer = 0;
+
+  const isNodeInsideCard = node => {
+    if (!cardElement || !node) return false;
+    const target = node.nodeType === Node.TEXT_NODE ? node.parentNode : node;
+    return !!(target && cardElement.contains(target));
+  };
+
+  const expandHexColor = value => {
+    const normalized = String(value || '').trim();
+    if (!normalized.startsWith('#')) return normalized;
+    if (normalized.length === 4) {
+      return `#${normalized.slice(1).split('').map(char => `${char}${char}`).join('')}`.toLowerCase();
+    }
+    return normalized.toLowerCase();
+  };
+
+  const colorToHex = value => {
+    const normalized = String(value || '').trim();
+    if (!normalized) return '#ffffff';
+    if (normalized.startsWith('#')) return expandHexColor(normalized);
+    const match = normalized.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+    if (!match) return '#ffffff';
+    return `#${match.slice(1, 4).map(channel => Number(channel).toString(16).padStart(2, '0')).join('')}`.toLowerCase();
+  };
+
+  const formatSelectionExcerpt = value => {
+    const clean = sanitizeDisplayText(value || '');
+    if (!clean) return 'No text selected';
+    return clean.length > 30 ? `Selected: "${clean.slice(0, 30)}..."` : `Selected: "${clean}"`;
+  };
+
+  const setSelectiveToolbarState = active => {
+    [selectionBoldButton, selectionItalicButton, selectionUnderlineButton, selectionColorInput, selectionFontSizeInput, selectionApplyColorButton, selectionApplySizeButton]
+      .filter(Boolean)
+      .forEach(element => {
+        element.disabled = !active;
+      });
+  };
+
+  const clearSavedCardSelection = () => {
+    savedCardSelection = null;
+  };
+
+  const saveCardSelection = () => {
+    const selection = window.getSelection();
+    if (!selection || !selection.rangeCount || selection.isCollapsed) return false;
+    const range = selection.getRangeAt(0);
+    if (!isNodeInsideCard(range.commonAncestorContainer)) return false;
+    savedCardSelection = range.cloneRange();
+    return true;
+  };
+
+  const restoreCardSelection = () => {
+    if (!savedCardSelection || !isNodeInsideCard(savedCardSelection.commonAncestorContainer)) return false;
+    const selection = window.getSelection();
+    if (!selection) return false;
+    selection.removeAllRanges();
+    selection.addRange(savedCardSelection.cloneRange());
+    return true;
+  };
+
+  const requireCardSelection = () => {
+    if (!restoreCardSelection()) {
+      setAppNotice('Card par text select karke phir style apply karein.', 'error');
+      return null;
+    }
+    const selection = window.getSelection();
+    if (!selection || !selection.rangeCount || selection.isCollapsed) {
+      setAppNotice('Card par text select karke phir style apply karein.', 'error');
+      return null;
+    }
+    return selection.getRangeAt(0);
+  };
+
+  const getInspectableCardRange = () => {
+    const liveSelection = window.getSelection();
+    if (liveSelection && liveSelection.rangeCount) {
+      const liveRange = liveSelection.getRangeAt(0);
+      if (!liveSelection.isCollapsed && isNodeInsideCard(liveRange.commonAncestorContainer)) {
+        return liveRange;
+      }
+    }
+    if (!savedCardSelection || savedCardSelection.collapsed || !isNodeInsideCard(savedCardSelection.commonAncestorContainer)) {
+      return null;
+    }
+    return savedCardSelection;
+  };
+
+  const collectSelectedTextSegments = range => {
+    if (!range) return [];
+    const root = range.commonAncestorContainer.nodeType === Node.TEXT_NODE
+      ? range.commonAncestorContainer.parentNode
+      : range.commonAncestorContainer;
+    if (!root) return [];
+
+    const segments = [];
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode(node) {
+        if (!node.textContent || !node.textContent.trim() || !isNodeInsideCard(node)) {
+          return NodeFilter.FILTER_REJECT;
+        }
+        const intersects = typeof range.intersectsNode === 'function'
+          ? range.intersectsNode(node)
+          : (() => {
+              const nodeRange = document.createRange();
+              nodeRange.selectNodeContents(node);
+              const startsBeforeNodeEnds = range.compareBoundaryPoints(Range.START_TO_END, nodeRange) <= 0;
+              const endsAfterNodeStarts = range.compareBoundaryPoints(Range.END_TO_START, nodeRange) >= 0;
+              return startsBeforeNodeEnds && endsAfterNodeStarts;
+            })();
+        return intersects ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+      }
+    });
+
+    let current = walker.nextNode();
+    while (current) {
+      const start = current === range.startContainer ? range.startOffset : 0;
+      const end = current === range.endContainer ? range.endOffset : current.textContent.length;
+      if (end > start) segments.push({ node: current, start, end });
+      current = walker.nextNode();
+    }
+
+    if (!segments.length && range.startContainer === range.endContainer && range.startContainer.nodeType === Node.TEXT_NODE) {
+      segments.push({
+        node: range.startContainer,
+        start: range.startOffset,
+        end: range.endOffset
+      });
+    }
+
+    return segments;
+  };
+
+  const getStyleCarrierElement = node => {
+    if (!node) return null;
+    if (node.nodeType === Node.TEXT_NODE) return node.parentElement || node.parentNode;
+    return node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement || node.parentNode;
+  };
+
+  const buildSelectionStyleSnapshot = () => {
+    const range = getInspectableCardRange();
+    if (!range) return null;
+
+    const segments = collectSelectedTextSegments(range);
+    if (!segments.length) return null;
+
+    const samples = segments.map(segment => {
+      const element = getStyleCarrierElement(segment.node);
+      const computed = window.getComputedStyle(element || cardElement);
+      const fontWeightValue = String(computed.fontWeight || '');
+      const fontWeightNumber = parseInt(fontWeightValue, 10);
+      return {
+        text: segment.node.textContent.slice(segment.start, segment.end),
+        color: colorToHex(computed.color),
+        fontSize: Math.max(8, Math.round(parseFloat(computed.fontSize) || 24)),
+        isBold: Number.isFinite(fontWeightNumber) ? fontWeightNumber >= 600 : /(bold|700|800|900)/i.test(fontWeightValue),
+        isItalic: computed.fontStyle === 'italic',
+        isUnderline: String(computed.textDecorationLine || computed.textDecoration || '').includes('underline')
+      };
+    });
+
+    if (!samples.length) return null;
+
+    const first = samples[0];
+    const hasMixedColor = samples.some(sample => sample.color !== first.color);
+    const hasMixedSize = samples.some(sample => sample.fontSize !== first.fontSize);
+    const hasMixedWeight = samples.some(sample => sample.isBold !== first.isBold);
+    const hasMixedItalic = samples.some(sample => sample.isItalic !== first.isItalic);
+    const hasMixedUnderline = samples.some(sample => sample.isUnderline !== first.isUnderline);
+
+    return {
+      text: samples.map(sample => sample.text).join(''),
+      color: first.color,
+      fontSize: first.fontSize,
+      isBold: first.isBold,
+      isItalic: first.isItalic,
+      isUnderline: first.isUnderline,
+      hasMixedColor,
+      hasMixedSize,
+      hasMixedStyle: hasMixedWeight || hasMixedItalic || hasMixedUnderline
+    };
+  };
+
+  const syncSelectedTextInspector = () => {
+    const snapshot = buildSelectionStyleSnapshot();
+    const hasSelection = !!snapshot;
+
+    selectionInspector?.classList.toggle('is-empty', !hasSelection);
+    setSelectiveToolbarState(hasSelection);
+
+    if (!hasSelection) {
+      if (selectionTargetLabel) selectionTargetLabel.textContent = 'No text selected';
+      if (selectionStyleSummary) selectionStyleSummary.textContent = 'Style: Regular';
+      if (selectionSizeSummary) selectionSizeSummary.textContent = 'Size: -';
+      if (selectionColorSummary) selectionColorSummary.textContent = 'Color: -';
+      selectionBoldButton?.classList.remove('active');
+      selectionItalicButton?.classList.remove('active');
+      selectionUnderlineButton?.classList.remove('active');
+      return;
+    }
+
+    const styleTokens = [];
+    if (snapshot.isBold) styleTokens.push('Bold');
+    if (snapshot.isItalic) styleTokens.push('Italic');
+    if (snapshot.isUnderline) styleTokens.push('Underline');
+    if (!styleTokens.length) styleTokens.push('Regular');
+
+    if (selectionTargetLabel) selectionTargetLabel.textContent = formatSelectionExcerpt(snapshot.text);
+    if (selectionStyleSummary) {
+      selectionStyleSummary.textContent = snapshot.hasMixedStyle
+        ? `Style: Mixed • ${styleTokens.join(' + ')}`
+        : `Style: ${styleTokens.join(' + ')}`;
+    }
+    if (selectionSizeSummary) {
+      selectionSizeSummary.textContent = snapshot.hasMixedSize
+        ? `Size: Mixed • ${snapshot.fontSize}px`
+        : `Size: ${snapshot.fontSize}px`;
+    }
+    if (selectionColorSummary) {
+      selectionColorSummary.textContent = snapshot.hasMixedColor
+        ? `Color: Mixed • ${snapshot.color.toUpperCase()}`
+        : `Color: ${snapshot.color.toUpperCase()}`;
+    }
+
+    if (document.activeElement !== selectionColorInput) {
+      selectionColorInput.value = snapshot.color;
+    }
+    if (document.activeElement !== selectionFontSizeInput) {
+      selectionFontSizeInput.value = String(snapshot.fontSize);
+    }
+    selectionBoldButton?.classList.toggle('active', snapshot.isBold);
+    selectionItalicButton?.classList.toggle('active', snapshot.isItalic);
+    selectionUnderlineButton?.classList.toggle('active', snapshot.isUnderline);
+  };
+
+  const wrapTextSegment = (segment, styles) => {
+    if (!segment?.node || segment.end <= segment.start) return null;
+
+    const { node, start, end } = segment;
+    if (!node.parentNode) return null;
+
+    if (
+      start === 0 &&
+      end === node.textContent.length &&
+      node.parentElement &&
+      node.parentElement.tagName === 'SPAN' &&
+      node.parentElement.childNodes.length === 1
+    ) {
+      Object.entries(styles).forEach(([property, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          node.parentElement.style[property] = value;
+        }
+      });
+      return node.parentElement;
+    }
+
+    let target = node;
+    if (start > 0) target = target.splitText(start);
+    const selectedLength = end - start;
+    if (selectedLength < target.textContent.length) target.splitText(selectedLength);
+
+    const span = document.createElement('span');
+    Object.entries(styles).forEach(([property, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        span.style[property] = value;
+      }
+    });
+    target.parentNode.insertBefore(span, target);
+    span.appendChild(target);
+    return span;
+  };
+
+  const applyStyleToCardSelection = styles => {
+    const range = requireCardSelection();
+    if (!range) return false;
+
+    const segments = collectSelectedTextSegments(range);
+    if (!segments.length) {
+      setAppNotice('Selected text ko style karne ke liye valid letters choose karein.', 'error');
+      return false;
+    }
+
+    const wrappedNodes = segments.map(segment => wrapTextSegment(segment, styles)).filter(Boolean);
+    if (!wrappedNodes.length) {
+      setAppNotice('Selected text ko style nahi kiya ja saka.', 'error');
+      return false;
+    }
+
+    const selection = window.getSelection();
+    const updatedRange = document.createRange();
+    updatedRange.setStartBefore(wrappedNodes[0]);
+    updatedRange.setEndAfter(wrappedNodes[wrappedNodes.length - 1]);
+    selection.removeAllRanges();
+    selection.addRange(updatedRange);
+    savedCardSelection = updatedRange.cloneRange();
+    syncSelectedTextInspector();
+    return true;
+  };
+
+  const applyCommandToCardSelection = command => {
+    const range = requireCardSelection();
+    if (!range) return false;
+    document.execCommand(command, false, null);
+    saveCardSelection();
+    syncSelectedTextInspector();
+    return true;
+  };
+  window.syncSelectiveTextInspector = syncSelectedTextInspector;
+  window.clearSelectiveTextSelection = () => {
+    clearSavedCardSelection();
+    syncSelectedTextInspector();
+  };
+  const commitSelectionFontSize = () => {
+    const fontSize = Math.max(8, Math.min(240, parseInt(selectionFontSizeInput.value, 10) || 24));
+    selectionFontSizeInput.value = String(fontSize);
+    return getInspectableCardRange()
+      ? applyStyleToCardSelection({ fontSize: `${fontSize}px` })
+      : false;
+  };
   const dropZone = document.getElementById('bgDropZone');
   const dropLabel = document.getElementById('bgDropLabel');
   const removeLogoBtn = document.getElementById('removeLogo');
@@ -1894,6 +2249,7 @@ window.addEventListener('DOMContentLoaded', () => {
       setValue('cardWidth', state.cardWidth || '600');
       setValue('overallScale', state.overallScale || '100');
       setValue('headingScale', state.headingScale || '90');
+      setValue('sebiSpacing', state.sebiSpacing || '100');
       setValue('tableSpacing', state.tableSpacing || '100');
       setValue('tableBorder', state.tableBorder || '1');
       setValue('fontFamily', state.fontFamily || "'Segoe UI', system-ui, sans-serif");
@@ -1906,6 +2262,8 @@ window.addEventListener('DOMContentLoaded', () => {
       if (state.hexPrimary) primaryHex.value = state.hexPrimary;
       if (state.hexSecondary) secondaryHex.value = state.hexSecondary;
       if (state.hexTertiary) tertiaryHex.value = state.hexTertiary;
+      setValue('highlightColor', state.selectedTextColor || '#ffeb3b');
+      setValue('selectionFontSize', state.selectedTextSize || '24');
 
       updateColors(primaryColor);
       updateColors(secondaryColor);
@@ -1942,6 +2300,7 @@ window.addEventListener('DOMContentLoaded', () => {
       document.getElementById('cardWidthVal').textContent = `${document.getElementById('cardWidth').value}px`;
       document.getElementById('overallScaleVal').textContent = `${document.getElementById('overallScale').value}%`;
       document.getElementById('headingScaleVal').textContent = `${document.getElementById('headingScale').value}%`;
+      document.getElementById('sebiSpacingVal').textContent = `${document.getElementById('sebiSpacing').value}%`;
       document.getElementById('tableSpacingVal').textContent = `${document.getElementById('tableSpacing').value}%`;
       document.getElementById('tableBorderVal').textContent = `${document.getElementById('tableBorder').value}px`;
 
@@ -2045,7 +2404,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  [['cardWidth', 'cardWidthVal', 'px'], ['overallScale', 'overallScaleVal', '%'], ['headingScale', 'headingScaleVal', '%'], ['tableSpacing', 'tableSpacingVal', '%']].forEach(([inputId, valueId, suffix]) => {
+  [['cardWidth', 'cardWidthVal', 'px'], ['overallScale', 'overallScaleVal', '%'], ['headingScale', 'headingScaleVal', '%'], ['sebiSpacing', 'sebiSpacingVal', '%'], ['tableSpacing', 'tableSpacingVal', '%']].forEach(([inputId, valueId, suffix]) => {
     document.getElementById(inputId).addEventListener('input', function () {
       document.getElementById(valueId).textContent = `${this.value}${suffix}`;
       generate();
@@ -2254,27 +2613,62 @@ window.addEventListener('DOMContentLoaded', () => {
     previewResizeRaf = requestAnimationFrame(syncPreviewAreaLayout);
   }, { passive: true });
 
+  document.addEventListener('selectionchange', () => {
+    saveCardSelection();
+    syncSelectedTextInspector();
+  });
+
   ['btnBold', 'btnItalic', 'btnUnderline'].forEach(id => {
     document.getElementById(id).addEventListener('mousedown', event => {
       event.preventDefault();
-      document.execCommand(id.replace('btn', '').toLowerCase(), false, null);
+      applyCommandToCardSelection(id.replace('btn', '').toLowerCase());
     });
   });
 
   document.getElementById('btnHighlight').addEventListener('mousedown', event => {
     event.preventDefault();
-    document.execCommand('styleWithCSS', false, true);
-    document.execCommand('foreColor', false, document.getElementById('highlightColor').value);
+    applyStyleToCardSelection({ color: selectionColorInput.value });
+  });
+
+  document.getElementById('btnTextSize').addEventListener('mousedown', event => {
+    event.preventDefault();
+    commitSelectionFontSize();
+  });
+
+  selectionColorInput.addEventListener('input', () => {
+    if (!getInspectableCardRange()) return;
+    applyStyleToCardSelection({ color: selectionColorInput.value });
+  });
+
+  selectionFontSizeInput.addEventListener('input', () => {
+    clearTimeout(selectionSizeApplyTimer);
+    selectionSizeApplyTimer = setTimeout(() => {
+      commitSelectionFontSize();
+    }, 180);
+  });
+
+  selectionFontSizeInput.addEventListener('change', () => {
+    clearTimeout(selectionSizeApplyTimer);
+    commitSelectionFontSize();
+  });
+
+  selectionFontSizeInput.addEventListener('keydown', event => {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    clearTimeout(selectionSizeApplyTimer);
+    commitSelectionFontSize();
   });
 
   document.getElementById('cardWidthVal').textContent = `${document.getElementById('cardWidth').value}px`;
   document.getElementById('overallScaleVal').textContent = `${document.getElementById('overallScale').value}%`;
   document.getElementById('headingScaleVal').textContent = `${document.getElementById('headingScale').value}%`;
+  document.getElementById('sebiSpacingVal').textContent = `${document.getElementById('sebiSpacing').value}%`;
   document.getElementById('tableSpacingVal').textContent = `${document.getElementById('tableSpacing').value}%`;
   document.getElementById('tableBorderVal').textContent = `${document.getElementById('tableBorder').value}px`;
   document.getElementById('card').style.setProperty('--table-bw', `${document.getElementById('tableBorder').value}px`);
   appStateHydrating = false;
   syncHistoryButtons();
+  syncSelectedTextInspector();
   setExportStatus('Ready to export');
   generate();
 });
