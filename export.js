@@ -62,15 +62,52 @@ function triggerSvgDownload(svgText, fileName) {
   downloadBlobFile(new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' }), `${fileName}.svg`);
 }
 
-function waitForImages(root) {
+const EXPORT_RESOURCE_WAIT_MS = 4000;
+// Keep regular exports print-sharp, while preventing extreme tall cards from
+// allocating an unreasonably large canvas.
+const MAX_RASTER_EXPORT_PIXELS = 16000000;
+
+function settleWithin(promise, timeoutMs = EXPORT_RESOURCE_WAIT_MS) {
+  return new Promise(resolve => {
+    const timeoutId = setTimeout(resolve, timeoutMs);
+    Promise.resolve(promise)
+      .catch(() => {})
+      .finally(() => {
+        clearTimeout(timeoutId);
+        resolve();
+      });
+  });
+}
+
+function waitForImages(root, timeoutMs = EXPORT_RESOURCE_WAIT_MS) {
   const images = Array.from(root.querySelectorAll('img'));
   return Promise.all(images.map(image => {
     if (image.complete) return Promise.resolve();
     return new Promise(resolve => {
-      image.addEventListener('load', resolve, { once: true });
-      image.addEventListener('error', resolve, { once: true });
+      const timeoutId = setTimeout(resolve, timeoutMs);
+      const finish = () => {
+        clearTimeout(timeoutId);
+        resolve();
+      };
+      image.addEventListener('load', finish, { once: true });
+      image.addEventListener('error', finish, { once: true });
     });
   }));
+}
+
+async function waitForExportResources(card) {
+  await Promise.all([
+    settleWithin(document.fonts?.ready),
+    waitForImages(card)
+  ]);
+}
+
+function getAdaptiveRasterScale(card, preferredScale) {
+  const rect = card.getBoundingClientRect();
+  const width = Math.max(1, Math.ceil(card.offsetWidth || rect.width));
+  const height = Math.max(1, Math.ceil(card.offsetHeight || rect.height));
+  const maximumScale = Math.sqrt(MAX_RASTER_EXPORT_PIXELS / (width * height));
+  return Math.max(1, Math.min(preferredScale, maximumScale));
 }
 
 function copyComputedStyles(source, target) {
@@ -137,13 +174,18 @@ async function resolveSvgAssetHref(url) {
   const source = String(url || '').trim().replace(/^['"]|['"]$/g, '');
   if (!source) return '';
   if (/^data:/i.test(source)) return source;
+
+  const controller = typeof AbortController === 'function' ? new AbortController() : null;
+  const timeoutId = controller ? setTimeout(() => controller.abort(), EXPORT_RESOURCE_WAIT_MS) : null;
   try {
-    const response = await fetch(source);
+    const response = await fetch(source, controller ? { signal: controller.signal } : undefined);
     if (!response.ok) return source;
     const blob = await response.blob();
     return await blobToDataUrl(blob);
   } catch (_error) {
     return source;
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
   }
 }
 
@@ -844,8 +886,7 @@ async function buildClassicVectorSvg(card) {
 }
 
 async function buildCardSvgMarkup(card, scale = 1) {
-  if (document.fonts?.ready) await document.fonts.ready;
-  await waitForImages(card);
+  await waitForExportResources(card);
 
   const rect = card.getBoundingClientRect();
   const width = Math.ceil(card.offsetWidth || rect.width);
@@ -878,14 +919,14 @@ async function buildCardSvgMarkup(card, scale = 1) {
 
 async function renderCardCanvasWithHtml2Canvas(card, scale = 1) {
   if (typeof window.html2canvas !== 'function') return null;
-  if (document.fonts?.ready) await document.fonts.ready;
-  await waitForImages(card);
+  await waitForExportResources(card);
 
   const canvas = await window.html2canvas(card, {
     backgroundColor: null,
     scale,
     useCORS: true,
     allowTaint: true,
+    imageTimeout: EXPORT_RESOURCE_WAIT_MS,
     logging: false,
     removeContainer: true,
     scrollX: 0,
@@ -968,23 +1009,44 @@ async function exportCardAsRaster(card, fileName, format) {
   const isPng = format === 'png';
   const mimeType = isPng ? 'image/png' : 'image/jpeg';
   const quality = isPng ? 1 : 0.95;
-  const scale = isPng ? 2.5 : 2;
+  const preferredScale = isPng ? 3 : 2.5;
+  const scale = getAdaptiveRasterScale(card, preferredScale);
+  const scaleLabel = `${scale.toFixed(scale >= 1.95 ? 1 : 2)}x`;
+  const extension = isPng ? 'png' : 'jpg';
+
+  // Chromium rasterizes foreignObject SVG substantially faster than html2canvas.
+  // Keep html2canvas as the browser-compatibility fallback below.
+  const useSvgFastPath = !/firefox|safari/i.test(navigator.userAgent) || /chrome|chromium|edg|opr|brave/i.test(navigator.userAgent);
+  if (useSvgFastPath) {
+    try {
+      setExportStatus(`Preparing ${format.toUpperCase()} at ${scaleLabel}...`, 'busy');
+      return await exportRasterFromSvgMarkup(card, fileName, scale, mimeType, quality, extension);
+    } catch (_error) {
+      // Some browsers block foreignObject or an external asset; use the legacy renderer.
+    }
+  }
+
+  setExportStatus(`Rendering ${format.toUpperCase()} at ${scaleLabel}...`, 'busy');
   try {
     const htmlCanvas = await renderCardCanvasWithHtml2Canvas(card, scale);
     if (htmlCanvas) {
-      return await downloadCanvasSlices(htmlCanvas, fileName, mimeType, quality, isPng ? 'png' : 'jpg');
+      return await downloadCanvasSlices(htmlCanvas, fileName, mimeType, quality, extension);
     }
   } catch (_error) {
-    // Fall through to the SVG raster fallback below.
+    // The SVG path below is the final fallback for browsers without html2canvas.
   }
 
+  return exportRasterFromSvgMarkup(card, fileName, scale, mimeType, quality, extension);
+}
+
+async function exportRasterFromSvgMarkup(card, fileName, scale, mimeType, quality, extension) {
   const { svg, exportWidth, exportHeight } = await buildCardSvgMarkup(card, scale);
   const svgBlob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
   const source = URL.createObjectURL(svgBlob);
 
   try {
     const image = await loadImageFromBlobUrl(source);
-    return await downloadImageSlices(image, exportWidth, exportHeight, fileName, mimeType, quality, isPng ? 'png' : 'jpg');
+    return await downloadImageSlices(image, exportWidth, exportHeight, fileName, mimeType, quality, extension);
   } finally {
     URL.revokeObjectURL(source);
   }
